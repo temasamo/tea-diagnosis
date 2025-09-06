@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 export default function DiagnosisPage() {
   const [input, setInput] = useState("");
@@ -13,7 +14,6 @@ export default function DiagnosisPage() {
     setResult(null);
 
     try {
-      // ここで API を呼び出す（仮のエンドポイント）
       const res = await fetch("/api/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -31,31 +31,126 @@ export default function DiagnosisPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-50">
-      <h1 className="text-2xl font-bold mb-4">お茶診断AI 🍵</h1>
+    <main
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px",
+        backgroundColor: "#f9fafb",
+      }}
+    >
+      <h1
+        style={{
+          color: "#000000",
+          fontSize: "24px",
+          fontWeight: "bold",
+          marginBottom: "16px",
+          textAlign: "center",
+        }}
+      >
+        お茶診断AI 🍵
+      </h1>
 
-      <form onSubmit={handleSubmit} className="w-full max-w-md flex flex-col gap-3">
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          width: "100%",
+          maxWidth: "400px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+        }}
+      >
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="例: 最近眠れないのでリラックスできるお茶が欲しい"
-          className="border rounded-lg p-3 w-full focus:outline-none focus:ring-2 focus:ring-green-400"
+          style={{
+            color: "#000000",
+            backgroundColor: "#ffffff",
+            border: "2px solid #000000",
+            borderRadius: "8px",
+            padding: "12px",
+            width: "100%",
+            fontSize: "16px",
+            fontFamily: "inherit",
+          }}
           rows={3}
           required
         />
         <button
           type="submit"
           disabled={loading}
-          className="bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+          style={{
+            backgroundColor: "#16a34a",
+            color: "#ffffff",
+            padding: "12px",
+            borderRadius: "8px",
+            border: "none",
+            fontSize: "16px",
+            fontWeight: "bold",
+            cursor: "pointer",
+          }}
         >
           {loading ? "診断中..." : "診断する"}
         </button>
       </form>
 
       {result && (
-        <div className="mt-6 p-4 bg-white shadow rounded-lg w-full max-w-md">
-          <h2 className="font-semibold text-lg mb-2">診断結果</h2>
-          <p>{result}</p>
+        <div
+          style={{
+            marginTop: "24px",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "16px",
+            maxWidth: "600px",
+            width: "100%",
+          }}
+        >
+          {/* 診断結果ボックス */}
+          <div
+            style={{
+              flex: 1,
+              padding: "16px",
+              backgroundColor: "#ffffff",
+              border: "2px solid #000000",
+              borderRadius: "8px",
+            }}
+          >
+            <h2
+              style={{
+                color: "#000000",
+                fontWeight: "bold",
+                marginBottom: "8px",
+                fontSize: "18px",
+              }}
+            >
+              診断結果
+            </h2>
+            <p
+              style={{
+                color: "#000000",
+                whiteSpace: "pre-line",
+                lineHeight: "1.5",
+              }}
+            >
+              {result}
+            </p>
+          </div>
+
+          {/* キャラ画像（右横に配置） */}
+          <div style={{ flexShrink: 0 }}>
+            <Image
+              src="/teaAI.png"
+              alt="茶ソムリエ"
+              width={180}
+              height={180}
+              style={{ borderRadius: "8px", objectFit: "contain" }}
+            />
+          </div>
         </div>
       )}
     </main>
