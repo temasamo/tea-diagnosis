@@ -1,12 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+
+/** 季節と時間帯から軽い挨拶を生成 */
+function useSeasonalGreeting() {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const hour = now.getHours();
+
+  let timeGreeting = "こんにちは";
+  if (hour >= 5 && hour < 12) timeGreeting = "おはようございます";
+  else if (hour >= 12 && hour < 17) timeGreeting = "こんにちは";
+  else if (hour >= 17 && hour < 23) timeGreeting = "こんばんは";
+  else timeGreeting = "遅くまでお疲れさまです";
+
+  let seasonHint = "";
+  if (month >= 3 && month <= 5) seasonHint = "春の空気を少し感じますね";
+  else if (month >= 6 && month <= 8) seasonHint = "暑さに少し疲れやすい時期ですね";
+  else if (month >= 9 && month <= 11) seasonHint = "落ち着いた空気を感じる季節ですね";
+  else seasonHint = "体が冷えやすい季節ですね";
+
+  return `${timeGreeting}。${seasonHint}`;
+}
 
 export default function DiagnosisPage() {
   const [input, setInput] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // 会話用ステート
+  const [showFirstLine, setShowFirstLine] = useState(true);
+  const [showSecondLine, setShowSecondLine] = useState(false);
+
+  const greeting = useMemo(() => useSeasonalGreeting(), []);
+
+  useEffect(() => {
+    // 2秒後に次のセリフを表示
+    const timer = setTimeout(() => {
+      setShowSecondLine(true);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,11 +89,67 @@ export default function DiagnosisPage() {
         お茶診断AI 🍵
       </h1>
 
+      {/* キャラ画像を大きく */}
+      <div style={{ marginBottom: "16px" }}>
+        <Image
+          src="/teaAI.png"
+          alt="茶ソムリエ"
+          width={280} // 以前の約5倍
+          height={280}
+          style={{ borderRadius: "16px", objectFit: "contain" }}
+          priority
+        />
+      </div>
+
+      {/* 会話風の吹き出し */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          width: "100%",
+          maxWidth: "600px",
+          marginBottom: "16px",
+        }}
+      >
+        {showFirstLine && (
+          <div
+            style={{
+              backgroundColor: "#f0fdf4",
+              border: "1px solid #16a34a",
+              color: "#166534",
+              padding: "12px",
+              borderRadius: "12px",
+              lineHeight: 1.6,
+              fontSize: "14px",
+            }}
+          >
+            🍵 茶ソムリエ：{greeting}
+          </div>
+        )}
+        {showSecondLine && (
+          <div
+            style={{
+              backgroundColor: "#f0fdf4",
+              border: "1px solid #16a34a",
+              color: "#166534",
+              padding: "12px",
+              borderRadius: "12px",
+              lineHeight: 1.6,
+              fontSize: "14px",
+            }}
+          >
+            🍵 茶ソムリエ：よければ、今の悩みや気分をひとこと教えてください。
+          </div>
+        )}
+      </div>
+
+      {/* 入力フォーム */}
       <form
         onSubmit={handleSubmit}
         style={{
           width: "100%",
-          maxWidth: "400px",
+          maxWidth: "600px",
           display: "flex",
           flexDirection: "column",
           gap: "12px",
@@ -93,12 +184,14 @@ export default function DiagnosisPage() {
             fontSize: "16px",
             fontWeight: "bold",
             cursor: "pointer",
+            opacity: loading ? 0.7 : 1,
           }}
         >
           {loading ? "診断中..." : "診断する"}
         </button>
       </form>
 
+      {/* 診断結果（右横に立ち絵） */}
       {result && (
         <div
           style={{
@@ -110,7 +203,6 @@ export default function DiagnosisPage() {
             width: "100%",
           }}
         >
-          {/* 診断結果ボックス */}
           <div
             style={{
               flex: 1,
@@ -134,14 +226,13 @@ export default function DiagnosisPage() {
               style={{
                 color: "#000000",
                 whiteSpace: "pre-line",
-                lineHeight: "1.5",
+                lineHeight: "1.6",
               }}
             >
               {result}
             </p>
           </div>
 
-          {/* キャラ画像（右横に配置） */}
           <div style={{ flexShrink: 0 }}>
             <Image
               src="/teaAI.png"
