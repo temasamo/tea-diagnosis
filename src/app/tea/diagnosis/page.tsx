@@ -73,6 +73,8 @@ export default function DiagnosisPage() {
     setTyping(true);
 
     try {
+      console.log("API呼び出し開始:", { text: userText, suggestionCount, history: historyForAPI() });
+      
       const res = await fetch("/api/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,15 +84,32 @@ export default function DiagnosisPage() {
           history: historyForAPI(),
         }),
       });
+      
+      console.log("APIレスポンス:", res.status, res.statusText);
+      
+      if (!res.ok) {
+        throw new Error(`API Error: ${res.status} ${res.statusText}`);
+      }
+      
       const data = await res.json();
+      console.log("APIデータ:", data);
 
-      // assistant_messages（前置きなど）を順に表示
+      // assistant_messages（前置きなど）を順に表示 - 重複チェック追加
       if (Array.isArray(data?.assistant_messages)) {
         let delay = 200;
-        data.assistant_messages.forEach((t: string) => {
+        data.assistant_messages.forEach((t: string, index: number) => {
           setTimeout(() => {
-            setMessages((arr) => [...arr, { role: "assistant", text: `🍵 茶ソムリエ：${t}` }]);
-          }, (delay += 250));
+            setMessages((arr) => {
+              // 重複チェック：同じメッセージが既に存在しないか確認
+              const messageText = `🍵 茶ソムリエ：${t}`;
+              const isDuplicate = arr.some(msg => msg.text === messageText);
+              if (isDuplicate) {
+                console.log("重複メッセージをスキップ:", messageText);
+                return arr;
+              }
+              return [...arr, { role: "assistant", text: messageText }];
+            });
+          }, delay + (index * 250));
         });
       }
 
@@ -120,14 +139,15 @@ export default function DiagnosisPage() {
         setTimeout(() => {
           setMessages((arr) => [
             ...arr,
-            { role: "assistant", text: `�� 茶ソムリエ：${data.followup_question}` },
+            { role: "assistant", text: `🍵 茶ソムリエ：${data.followup_question}` },
           ]);
         }, 1100);
       }
-    } catch {
+    } catch (error) {
+      console.error("エラー詳細:", error);
       setMessages((arr) => [
         ...arr,
-        { role: "assistant", text: "🍵 茶ソムリエ：うまく受け取れなかったみたい。もう一度だけ試せますか？" },
+        { role: "assistant", text: "🍵 茶ソムリエ：申し訳ありません。システムエラーが発生しました。もう一度お試しください。" },
       ]);
     } finally {
       setTyping(false);
