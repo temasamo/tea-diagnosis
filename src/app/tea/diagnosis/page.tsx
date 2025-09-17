@@ -36,12 +36,37 @@ function TypingDots() {
   return <span>{dots}</span>;
 }
 
+// 文脈に合わせた提案表現を生成
+function generateSuggestionText(suggestion: Suggestion, suggestionCount: number, userInput: string) {
+  const { name, reason } = suggestion;
+  
+  // ユーザーの入力内容に基づいて表現を変える
+  if (userInput.includes("眠") || userInput.includes("寝") || userInput.includes("リラックス")) {
+    return `そんな時には「${name}」がおすすめです。${reason}`;
+  } else if (userInput.includes("疲") || userInput.includes("だる")) {
+    return `疲れている時には「${name}」がぴったりです。${reason}`;
+  } else if (userInput.includes("集中") || userInput.includes("仕事") || userInput.includes("勉強")) {
+    return `集中したい時には「${name}」が良いですね。${reason}`;
+  } else if (userInput.includes("どちらも") || userInput.includes("両方") || userInput.includes("どっちも")) {
+    return `幅広い嗜好をお持ちですね。そんな方には「${name}」がおすすめです。${reason}`;
+  } else if (userInput.includes("温") || userInput.includes("冷")) {
+    return `温度の好みに合わせて「${name}」はいかがでしょうか。${reason}`;
+  } else if (suggestionCount === 0) {
+    return `そんな時におすすめなのは「${name}」です。${reason}`;
+  } else if (suggestionCount === 1) {
+    return `もう一つおすすめしたいのは「${name}」です。${reason}`;
+  } else {
+    return `最後に「${name}」もおすすめです。${reason}`;
+  }
+}
+
 export default function DiagnosisPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [typing, setTyping] = useState(false);
   const [suggestionCount, setSuggestionCount] = useState(0); // 0→3
   const [ended, setEnded] = useState(false);
+  const [lastUserInput, setLastUserInput] = useState(""); // 最後のユーザー入力を記録
 
   // 初回：挨拶→2秒後に誘導
   const greeting = useMemo(() => seasonalGreeting(), []);
@@ -68,6 +93,7 @@ export default function DiagnosisPage() {
     if (!input.trim() || ended) return;
 
     const userText = input.trim();
+    setLastUserInput(userText); // ユーザー入力を記録
     setMessages((m) => [...m, { role: "user", text: userText }]);
     setInput("");
     setTyping(true);
@@ -113,15 +139,16 @@ export default function DiagnosisPage() {
         });
       }
 
-      // 提案があれば1つだけ表示
+      // 提案があれば1つだけ表示 - 文脈に合わせた自然な表現
       if (data?.suggestion?.name) {
         const n = suggestionCount + 1;
         setTimeout(() => {
+          const suggestionText = generateSuggestionText(data.suggestion, suggestionCount, lastUserInput);
           setMessages((arr) => [
             ...arr,
             {
               role: "assistant",
-              text: `🍵 茶ソムリエ：提案${n}「${data.suggestion.name}」— ${data.suggestion.reason}`,
+              text: `🍵 茶ソムリエ：${suggestionText}`,
             },
           ]);
           setSuggestionCount(n);
@@ -158,6 +185,7 @@ export default function DiagnosisPage() {
     setMessages([]);
     setSuggestionCount(0);
     setEnded(false);
+    setLastUserInput("");
     // 再度挨拶
     const greet = seasonalGreeting();
     setMessages([
