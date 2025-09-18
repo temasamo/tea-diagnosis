@@ -1,9 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 type ChatHistory = { role: string; text: string };
 
@@ -19,6 +14,12 @@ export async function POST(request: NextRequest) {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(mockTurn(text, suggestionCount));
     }
+
+    // OpenAI API Key がある場合の処理
+    const { OpenAI } = await import("openai");
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
     const sys = [
       "あなたは日本語で応答する『茶ソムリエAI』です。",
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     });
 
     const content = completion.choices?.[0]?.message?.content;
-    if (!content) return NextResponse.json(mockTurn(text, suggestionCount)); // フォールバック
+    if (!content) return NextResponse.json(mockTurn(text, suggestionCount));
 
     let parsed: Record<string, unknown>;
     try {
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(parsed);
-  } catch (e) {
+  } catch (error) {
     return NextResponse.json(mockTurn("エラー", 0));
   }
 }
