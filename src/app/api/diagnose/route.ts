@@ -1,43 +1,25 @@
-// src/app/api/diagnose/route.ts
-import { NextResponse } from "next/server";
-import { openai } from "@/lib/openai";
-// export const runtime = "edge"; // 必要なら有効化
+import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
 
-type ReqBody = {
-  text?: string;
-  suggestionCount?: number; // これまでの提案数（0〜3）
-  history?: { role: "user" | "assistant"; text: string }[]; // 直近の会話（任意）
-};
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-export async function POST(req: Request) {
+type ChatHistory = { role: string; text: string };
+
+export async function POST(request: NextRequest) {
   try {
-    const { text, suggestionCount = 0, history = [] }: ReqBody = await req.json();
+    const { text, suggestionCount = 0, history = [] } = await request.json();
 
-    if (!text || !text.trim()) {
-      return NextResponse.json(
-        { error: "empty", assistant_messages: [], suggestion: null, followup_question: null, end: false, closing: null },
-        { status: 400 }
-      );
+    if (!text?.trim()) {
+      return NextResponse.json({ error: "Text is required" }, { status: 400 });
     }
 
-    // 3回出し終わっていたら終了固定
-    if (suggestionCount >= 3) {
-      return NextResponse.json({
-        assistant_messages: [],
-        suggestion: null,
-        followup_question: null,
-        end: true,
-        closing: "今日はここまでにしましょう。気になるお茶があれば、ゆっくり選んでくださいね。"
-      });
+    // OpenAI API Key がない場合はモックを返す
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(mockTurn(text, suggestionCount));
     }
 
-    // ── OpenAI未設定ならモック応答 ───────────────────────────
-    if (!openai) {
-      const mock = mockTurn(text, suggestionCount);
-      return NextResponse.json(mock);
-    }
-
-    // ── OpenAIプロンプト ─────────────────────────────────
     const sys = [
       "あなたは日本語で応答する『茶ソムリエAI』です。",
       "会話を通じて合計3回まで、毎回1つだけお茶を提案します。",
@@ -46,12 +28,6 @@ export async function POST(req: Request) {
       "  2) その飲み物の嗜好（温/冷、甘/さっぱり、カフェイン可否、香りの好み など）を1つだけ質問で深掘りする",
       "  3) その嗜好に\"自然に橋渡しできる\"お茶を1つだけ提案する（例：コーヒー派→焙煎香の強い『ほうじ茶』等）",
       "  4) 無反応や話題無視は禁止。必ず会話を継続する。",
-      "",
-      "★理解力向上：",
-      "  - 「どちらも」「両方」「どっちも」= 複数の選択肢を両方選ぶ意味",
-      "  - 「温かいのも冷たいのも好き」= 温度にこだわらない",
-      "  - 「甘いのも苦いのも好き」= 味の幅が広い",
-      "  - ユーザーの回答を正確に理解し、誤解釈しない",
       "",
       "各ターンでは次を厳守：",
       "  (a) assistant_messages：1〜2文の短い前置き（共感や状況整理）",
@@ -70,29 +46,23 @@ export async function POST(req: Request) {
       '{ "assistant_messages": string[], "suggestion": { "name": string, "reason": string } | null, "followup_question": string | null, "end": boolean, "closing": string | null }'
     ].join("\n");
 
-    const turnInfo =
-      suggestionCount === 0
-        ? "これは1回目の提案ターンです。ユーザーの発話に沿って1つだけ提案し、次の質問を1つしてください。"
-        : suggestionCount === 1
-        ? "これは2回目の提案ターンです。先の会話を踏まえて、重複しない別のお茶を1つ提案し、次の質問を1つしてください。"
-        : "これは3回目の提案ターンです。重複しない別のお茶を1つ提案し、end=true としてやんわり締めの closing を入れ、followup_question は出さないでください。";
-
-    const user =
-      [
-        `ユーザー入力: """${text.trim()}"""`,
-        `これまでの提案回数: ${suggestionCount}`,
-        turnInfo,
-        "注意：ユーザーが『お茶以外』を答えたら、共感→嗜好を質問→自然にお茶へ橋渡しを必ず行うこと。",
-        "注意：ユーザーが「どちらも」「両方」など複数選択を示した場合は、その幅広い嗜好を正確に理解すること。",
-        "これまでの会話（参考）:",
-        JSON.stringify(history.slice(-8)), // 直近だけ渡す
-      ].join("\n");
+    const user = [
+      `現在の提案回数: ${suggestionCount}/3`,
+      `ユーザー入力: ${text}`,
+      "",
+      "★重要：ユーザーが「どちらも」「両方」「どっちも」と答えた場合は、",
+      "「どちらもお好きなんですね」のように受け止めて、その嗜好に合うお茶を提案してください。",
+      "「温かいが好き」などと誤解釈しないでください。",
+      "",
+      "会話履歴:",
+      ...history.slice(-4).map((h: ChatHistory) => `${h.role}: ${h.text}`),
+    ].join("\n");
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.7,
       max_tokens: 350,
-      response_format: { type: "json_object" } as any,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: sys },
         { role: "user", content: user },
@@ -102,7 +72,7 @@ export async function POST(req: Request) {
     const content = completion.choices?.[0]?.message?.content;
     if (!content) return NextResponse.json(mockTurn(text, suggestionCount)); // フォールバック
 
-    let parsed: any;
+    let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(content);
     } catch {
@@ -128,31 +98,30 @@ export async function POST(req: Request) {
 // ── 超簡易モック（OpenAI未設定/失敗時用） ─────────────────────
 function mockTurn(text: string, suggestionCount: number) {
   const bank = [
-    { name: "ほうじ茶", reason: "香ばしく落ち着いた味わい。カフェイン控えめで夜にも。" },
-    { name: "カモミール", reason: "やわらかな香りでリラックスしやすいノンカフェイン。" },
-    { name: "煎茶", reason: "すっきりした飲み口。気分の切り替えや作業前に。" },
-    { name: "ルイボス", reason: "クセが少なく飲みやすいノンカフェイン。" },
-    { name: "プーアル", reason: "食後にも合う、まろやかなコクのある味わい。" },
+    { name: "煎茶", reason: "程よいカフェインで集中力が高まります" },
+    { name: "ほうじ茶", reason: "香ばしい香りでリラックスできます" },
+    { name: "ルイボスティー", reason: "カフェインフリーで体に優しいです" },
+    { name: "カモミール", reason: "心を落ち着かせる効果があります" },
+    { name: "ジャスミンティー", reason: "花の香りで気分が明るくなります" },
   ];
-  const pick = (i: number) => bank[i % bank.length];
 
-  if (suggestionCount >= 2) {
+  const n = Math.min(suggestionCount + 1, 3);
+  const selected = bank[suggestionCount % bank.length];
+
+  if (n >= 3) {
     return {
-      assistant_messages: ["気持ちに寄り添える一杯で、今日をやさしく締めくくりましょう。"],
-      suggestion: pick(2 + suggestionCount),
+      assistant_messages: ["最後の提案です。"],
+      suggestion: selected,
       followup_question: null,
       end: true,
-      closing: "今日はこのあたりでおすすめは以上です。気になるお茶があれば、じっくり選んでくださいね。",
+      closing: "今日はこのあたりでおすすめは以上です。お疲れさまでした！",
     };
   }
 
   return {
-    assistant_messages: ["よくわかります。まずは試しやすい一杯から。"],
-    suggestion: pick(suggestionCount),
-    followup_question:
-      suggestionCount === 0
-        ? "夜の過ごし方はどんな感じですか？寝る前にも飲みたい？"
-        : "日中の集中や作業の前後にも合うお茶を探しますか？",
+    assistant_messages: ["なるほど、そうですね。"],
+    suggestion: selected,
+    followup_question: "他に気になるお茶はありますか？",
     end: false,
     closing: null,
   };

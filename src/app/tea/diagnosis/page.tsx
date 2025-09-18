@@ -122,7 +122,7 @@ export default function DiagnosisPage() {
 
       // assistant_messages（前置きなど）を順に表示 - 重複チェック追加
       if (Array.isArray(data?.assistant_messages)) {
-        let delay = 200;
+        const delay = 200;
         data.assistant_messages.forEach((t: string, index: number) => {
           setTimeout(() => {
             setMessages((arr) => {
