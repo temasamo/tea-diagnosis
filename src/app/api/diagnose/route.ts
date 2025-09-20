@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function mockTurn(suggestionCount: number, userInput: string, phase: string, userProfile: any) {
+function mockTurn(suggestionCount: number, _userInput: string, _phase: string, _userProfile: Record<string, unknown>) {
   const diagnosisQuestions = [
     "どの時間帯に疲れを感じますか？（朝・昼・夜）",
     "手足の冷えですか？それともお腹の冷えですか？",

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 
 type Role = "assistant" | "user";
 type ChatMsg = { role: Role; text: string };
@@ -19,11 +18,11 @@ function seasonalGreeting() {
   const now = new Date();
   const m = now.getMonth() + 1;
   const h = now.getHours();
-  let time =
+  const time =
     h >= 5 && h < 12 ? "おはようございます" :
     h >= 12 && h < 17 ? "こんにちは" :
     h >= 17 && h < 23 ? "こんばんは" : "遅くまでお疲れさまです";
-  let hint =
+  const hint =
     m >= 3 && m <= 5 ? "春の空気を少し感じますね" :
     m >= 6 && m <= 8 ? "暑さに少し疲れやすい時期ですね" :
     m >= 9 && m <= 11 ? "落ち着いた空気を感じる季節ですね" :
@@ -198,7 +197,7 @@ export default function DiagnosisPage() {
         }
       }
 
-    } catch (err) {
+    } catch {
       setMessages(arr => [
         ...arr,
         { role: "assistant", text: "🍵 茶ソムリエ：すみません、うまく受け取れませんでした。もう一度だけ送っていただけますか？" },
