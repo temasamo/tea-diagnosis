@@ -15,11 +15,11 @@ export async function POST(request: NextRequest) {
       "あなたは日本語で応答する『茶ソムリエAI』です。",
       "効率的な診断を通じて、ユーザーに最適なお茶とその飲み方を提案します。",
       "",
-      "★診断ルール：",
-      "  1) 最大3-4回の質問で十分な情報を収集",
-      "  2) 3-4回質問したら必ずお茶を提案する",
-      "  3) 質問は具体的で分かりやすくする",
-      "  4) 同じ質問は絶対に重複しない",
+      "★診断ルール（最重要）：",
+      "  1) 質問回数が3回に達したら必ずお茶を提案する",
+      "  2) 質問は具体的で分かりやすくする",
+      "  3) 同じ質問は絶対に重複しない",
+      "  4) suggestionCountが3以上なら必ずsuggestionを返す",
       "",
       "★具体的な質問例：",
       "  - 「疲れている」→「どの時間帯に疲れを感じますか？（朝・昼・夜）」",
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       "各ターンでは次を厳守：",
       "  (a) assistant_messages：ユーザーの発言に対する共感・理解を最初に表現",
       "  (b) diagnosis_question：具体的で分かりやすい質問を1つだけ（重複厳禁）",
-      "  (c) suggestion：3-4回質問後は必ずお茶を提案",
+      "  (c) suggestion：suggestionCountが3以上なら必ずお茶を提案",
       "  (d) phase：現在のフェーズ（collecting/suggesting/confirming）",
       "",
       "★重要：JSON形式で必ず応答すること。他の文字は一切含めない。",
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       `ユーザープロフィール: ${JSON.stringify(userProfile || {})}`,
       "",
       "★重要ルール：",
-      "- 質問回数が3-4回に達したら必ずお茶を提案する",
+      `- 質問回数が${suggestionCount}回で、3回以上なら必ずお茶を提案する`,
       "- 質問は具体的で分かりやすくする",
       "- 同じ質問は絶対に重複しない",
       "- ユーザーの発言を必ず理解し、共感・受け止めを最初に行う",
@@ -102,6 +102,51 @@ export async function POST(request: NextRequest) {
 
     try {
       const parsed = JSON.parse(cleanContent);
+      
+      // suggestionCountが3以上なら強制的にお茶を提案
+      if (suggestionCount >= 3 && !parsed.suggestion) {
+        const teaSuggestions = [
+          {
+            tea: "ルイボスティー",
+            reason: "カフェインフリーでリラックス効果があり、胃に優しいです",
+            brewing: "95度のお湯で3-5分蒸らす",
+            sweetener: "蜂蜜（温かいうちに少量）",
+            food: "アーモンドやクルミなどのナッツ",
+            timing: "夕方から夜にかけて"
+          },
+          {
+            tea: "ジャスミンティー",
+            reason: "香りが高く、気分をリフレッシュしてくれます",
+            brewing: "80度のお湯で2-3分蒸らす",
+            sweetener: "砂糖（香りを邪魔しない程度）",
+            food: "和菓子や軽いクッキー",
+            timing: "午後のリラックスタイム"
+          },
+          {
+            tea: "抹茶",
+            reason: "集中力を高め、リラックス効果もあります",
+            brewing: "70度のお湯で茶筅でよくかき混ぜる",
+            sweetener: "黒砂糖（抹茶の苦味と相性抜群）",
+            food: "和菓子、特に生菓子",
+            timing: "朝の集中したい時間"
+          },
+          {
+            tea: "生姜茶",
+            reason: "体を温め、胃腸の調子を整えてくれます",
+            brewing: "90度のお湯で3分蒸らす",
+            sweetener: "黒砂糖（生姜の辛味と相性抜群）",
+            food: "温かいお粥や軽いスープ",
+            timing: "朝食時や体が冷えた時"
+          }
+        ];
+        
+        const selectedTea = teaSuggestions[suggestionCount % teaSuggestions.length];
+        parsed.suggestion = selectedTea;
+        parsed.diagnosis_question = null;
+        parsed.phase = "suggesting";
+        parsed.assistant_messages = ["情報を整理して、最適なお茶をご提案させていただきますね。"];
+      }
+      
       return NextResponse.json(parsed);
     } catch (parseError) {
       console.error("JSON parse error:", parseError);
@@ -160,7 +205,7 @@ function mockTurn(suggestionCount: number, userInput: string, phase: string, use
     }
   ];
 
-  // 3-4回質問したら必ずお茶を提案
+  // 3回質問したら必ずお茶を提案
   if (suggestionCount >= 3) {
     const selectedTea = teaSuggestions[suggestionCount % teaSuggestions.length];
     return {

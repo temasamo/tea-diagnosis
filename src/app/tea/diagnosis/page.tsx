@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 
 type Role = "assistant" | "user";
 type ChatMsg = { role: Role; text: string };
-type TeaSuggestion = { 
+type Suggestion = { 
   tea: string; 
   reason: string; 
   brewing: string; 
@@ -13,50 +13,68 @@ type TeaSuggestion = {
   food: string; 
   timing: string; 
 };
-type ChatHistory = { role: Role; text: string };
 
+// ── 季節＋時間の軽いあいさつ ───────────────────────────────
 function seasonalGreeting() {
   const now = new Date();
   const m = now.getMonth() + 1;
   const h = now.getHours();
-
-  let time = "こんにちは";
-  if (h >= 5 && h < 12) time = "おはようございます";
-  else if (h >= 12 && h < 17) time = "こんにちは";
-  else if (h >= 17 && h < 23) time = "こんばんは";
-  else time = "遅くまでお疲れさまです";
-
-  let hint = "";
-  if (m >= 3 && m <= 5) hint = "春の空気を少し感じますね";
-  else if (m >= 6 && m <= 8) hint = "暑さに少し疲れやすい時期ですね";
-  else if (m >= 9 && m <= 11) hint = "落ち着いた空気を感じる季節ですね";
-  else hint = "体が冷えやすい季節ですね";
-
+  let time =
+    h >= 5 && h < 12 ? "おはようございます" :
+    h >= 12 && h < 17 ? "こんにちは" :
+    h >= 17 && h < 23 ? "こんばんは" : "遅くまでお疲れさまです";
+  let hint =
+    m >= 3 && m <= 5 ? "春の空気を少し感じますね" :
+    m >= 6 && m <= 8 ? "暑さに少し疲れやすい時期ですね" :
+    m >= 9 && m <= 11 ? "落ち着いた空気を感じる季節ですね" :
+    "体が冷えやすい季節ですね";
   return `${time}。${hint}`;
 }
 
+// ── 打鍵中の「…」 ────────────────────────────────────────
 function TypingDots() {
   const [dots, setDots] = useState(".");
   useEffect(() => {
-    const id = setInterval(() => setDots((d) => (d.length >= 3 ? "." : d + ".")), 360);
+    const id = setInterval(() => setDots(d => (d.length >= 3 ? "." : d + ".")), 360);
     return () => clearInterval(id);
   }, []);
   return <span>{dots}</span>;
 }
 
+// ── しんどい時モード：ユーザー文に低エネルギー表現があるか ───────
+function isLowEnergy(text: string) {
+  return /しんど|つら|疲れ|だる|きつ|元気ない|やる気|無理|重い/.test(text);
+}
+
+// ── 提案メッセージを文脈に合わせてやさしく言い換え ───────────
+function renderSuggestion(s: Suggestion, turn: number, userText: string) {
+  const { tea, reason, brewing, sweetener, food, timing } = s;
+  if (isLowEnergy(userText)) {
+    return `まずはやさしい一杯から。「${tea}」はいかがでしょう。${reason}\n\n【飲み方】${brewing}\n【甘味料】${sweetener}\n【合う食べ物】${food}\n【おすすめタイミング】${timing}`;
+  }
+  if (/眠|寝|リラックス/.test(userText)) {
+    return `リラックスしたい時には「${tea}」がおすすめです。${reason}\n\n【飲み方】${brewing}\n【甘味料】${sweetener}\n【合う食べ物】${food}\n【おすすめタイミング】${timing}`;
+  }
+  return `そんな方には「${tea}」がおすすめです。${reason}\n\n【飲み方】${brewing}\n【甘味料】${sweetener}\n【合う食べ物】${food}\n【おすすめタイミング】${timing}`;
+}
+
+// ── 文字列正規化（重複チェック用） ─────────────────────────
+function norm(s: string) {
+  return s.replace(/[。、！？\s]/g, "").toLowerCase();
+}
+
 export default function DiagnosisPage() {
-  const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [suggestionCount, setSuggestionCount] = useState(0);
+  const [questionCount, setQuestionCount] = useState(0);
   const [ended, setEnded] = useState(false);
-  const [diagnosisPhase, setDiagnosisPhase] = useState("collecting");
-  const [userProfile, setUserProfile] = useState<any>({});
-  const [currentSuggestion, setCurrentSuggestion] = useState<TeaSuggestion | null>(null);
+  const [phase, setPhase] = useState<"collecting" | "suggesting" | "confirming">("collecting");
   
-  const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const lastUserTextRef = useRef("");
   const askedFollowupsRef = useRef<string[]>([]);
   const processingRef = useRef(false);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   // 新規/更新メッセージ・タイピングインジケータのたびに最下部へ
   useEffect(() => {
@@ -65,7 +83,7 @@ export default function DiagnosisPage() {
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, typing]);
 
-  // 初回：挨拶→2秒後に質問開始
+  // 初回：挨拶→誘導
   const greeting = useMemo(() => seasonalGreeting(), []);
   useEffect(() => {
     setTyping(true);
@@ -82,60 +100,39 @@ export default function DiagnosisPage() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [greeting]);
 
+  // APIに渡す軽量履歴
   const historyForAPI = () =>
-    messages.slice(-8).map((m) => ({ role: m.role, text: m.text.replace(/^🍵 茶ソムリエ：/, "") }));
+    messages.slice(-8).map(m => ({ role: m.role, text: m.text.replace(/^🍵 茶ソムリエ：/, "") }));
 
-  // 包括的提案の表示
-  const displayComprehensiveSuggestion = (suggestion: TeaSuggestion) => {
-    const suggestionText = `🍵 茶ソムリエ：あなたにぴったりのお茶をご提案させていただきます！
-
-【おすすめのお茶】
-${suggestion.tea}
-理由：${suggestion.reason}
-
-【最適な飲み方】
-${suggestion.brewing}
-
-【合う甘味料】
-${suggestion.sweetener}
-
-【合う食べ物】
-${suggestion.food}
-
-【おすすめのタイミング】
-${suggestion.timing}`;
-
-    setMessages(prev => [...prev, { role: "assistant", text: suggestionText }]);
-  };
+  // 「終わりたい」即終了ワード
+  const END_PATTERNS = ["もう大丈夫", "大丈夫です", "最後と言った", "終わり", "結構です", "ありがとう", "十分です", "これでいい"];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || ended || processingRef.current) return;
 
     const userText = input.trim();
+    lastUserTextRef.current = userText;
     processingRef.current = true;
-    
-    // 終了意図のチェック
-    if (userText.includes("最後") || userText.includes("終わり") || userText.includes("もう大丈夫") || userText.includes("ありがとう")) {
-      setMessages(prev => [...prev, { role: "user", text: userText }]);
+
+    // 即終了フレーズ検知
+    if (END_PATTERNS.some(p => userText.includes(p))) {
+      setMessages(m => [...m, { role: "user", text: userText }]);
       setInput("");
       setTyping(true);
       setTimeout(() => {
-        setMessages(prev => [...prev, { role: "assistant", text: "🍵 茶ソムリエ：ありがとうございました。お茶でリフレッシュしてくださいね！" }]);
+        setMessages(arr => [...arr, { role: "assistant", text: "🍵 茶ソムリエ：承知しました。無理のないときに、またいつでもどうぞ。" }]);
         setEnded(true);
         setTyping(false);
-        processingRef.current = false;
-      }, 1000);
+      }, 420);
+      processingRef.current = false;
       return;
     }
 
-    setMessages(prev => [...prev, { role: "user", text: userText }]);
+    // 送信表示
+    setMessages(m => [...m, { role: "user", text: userText }]);
     setInput("");
     setTyping(true);
-
-    // ユーザープロフィールを更新
-    const updatedProfile = { ...userProfile, [diagnosisPhase]: userText };
-    setUserProfile(updatedProfile);
 
     try {
       const res = await fetch("/api/diagnose", {
@@ -143,63 +140,69 @@ ${suggestion.timing}`;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: userText,
-          suggestionCount,
+          suggestionCount: questionCount,
           history: historyForAPI(),
           askedFollowups: askedFollowupsRef.current,
-          lowEnergyHint: userText.includes("疲") || userText.includes("だる") || userText.includes("しんど"),
-          diagnosisPhase,
-          userProfile: updatedProfile
+          lowEnergyHint: isLowEnergy(userText),
+          diagnosisPhase: phase,
+          userProfile: {},
         }),
       });
-      
-      if (!res.ok) {
-        throw new Error(`API Error: ${res.status} ${res.statusText}`);
-      }
-      
+      if (!res.ok) throw new Error(`API ${res.status}`);
+
       const data = await res.json();
 
-      // フェーズを更新
+      // フェーズ更新
       if (data?.phase) {
-        setDiagnosisPhase(data.phase);
+        setPhase(data.phase);
       }
 
-      // assistant_messages（前置きなど）を順に表示
+      // 前置きメッセージ（共感・理解）のみ表示
       if (Array.isArray(data?.assistant_messages)) {
-        const delay = 200;
-        data.assistant_messages.forEach((t: string, index: number) => {
+        data.assistant_messages.forEach((t: string, idx: number) => {
           setTimeout(() => {
-            setMessages(prev => [...prev, { role: "assistant", text: `🍵 茶ソムリエ：${t}` }]);
-          }, delay + (index * 250));
+            setMessages(arr => [...arr, { role: "assistant", text: `🍵 茶ソムリエ：${t}` }]);
+          }, 180 + idx * 240);
         });
       }
 
-      // 包括的提案の表示
-      if (data?.suggestion) {
+      // お茶の提案
+      if (data?.suggestion?.tea) {
+        const text = renderSuggestion(data.suggestion as Suggestion, questionCount, lastUserTextRef.current);
         setTimeout(() => {
-          displayComprehensiveSuggestion(data.suggestion);
-          setCurrentSuggestion(data.suggestion);
-          setSuggestionCount(prev => prev + 1);
-        }, 700);
+          setMessages(arr => [...arr, { role: "assistant", text: `🍵 茶ソムリエ：${text}` }]);
+        }, 650);
       }
 
-      // 診断質問の表示
+      // 診断質問（重複チェック付き）
       if (data?.diagnosis_question) {
-        setTimeout(() => {
-          setMessages(prev => [...prev, { role: "assistant", text: `🍵 茶ソムリエ：${data.diagnosis_question}` }]);
-          askedFollowupsRef.current.push(data.diagnosis_question);
-        }, 1100);
+        const dq = String(data.diagnosis_question);
+        const isDup = askedFollowupsRef.current.some(
+          q => norm(q) === norm(dq) || norm(dq).includes(norm(q)) || norm(q).includes(norm(dq))
+        );
+        if (!isDup) {
+          askedFollowupsRef.current = [...askedFollowupsRef.current.slice(-5), dq];
+          setQuestionCount(prev => prev + 1);
+          setTimeout(() => {
+            setMessages(arr => [...arr, { role: "assistant", text: `🍵 茶ソムリエ：${dq}` }]);
+          }, 1000);
+        } else {
+          // 重複検出：別軸で聞く or 終了寄りへ
+          const fallback =
+            questionCount < 2
+              ? "では別の切り口でお伺いします。カフェインは控えたいですか？それとも気分転換に少し欲しいですか？"
+              : "ここまでで十分な情報が集まりました。最適なお茶をご提案させていただきますね。";
+          setTimeout(() => {
+            setMessages(arr => [...arr, { role: "assistant", text: `🍵 茶ソムリエ：${fallback}` }]);
+          }, 1000);
+        }
       }
 
-      // 経験確認
-      if (data?.experience_check) {
-        setTimeout(() => {
-          setMessages(prev => [...prev, { role: "assistant", text: "🍵 茶ソムリエ：このお茶を飲んだことがありますか？もし飲んだことがあれば、その時の印象はいかがでしたか？" }]);
-        }, 1500);
-      }
-
-    } catch (error) {
-      console.error("エラー詳細:", error);
-      setMessages(prev => [...prev, { role: "assistant", text: "🍵 茶ソムリエ：申し訳ありません。システムエラーが発生しました。もう一度お試しください。" }]);
+    } catch (err) {
+      setMessages(arr => [
+        ...arr,
+        { role: "assistant", text: "🍵 茶ソムリエ：すみません、うまく受け取れませんでした。もう一度だけ送っていただけますか？" },
+      ]);
     } finally {
       setTyping(false);
       processingRef.current = false;
@@ -208,16 +211,13 @@ ${suggestion.timing}`;
 
   function resetAll() {
     setMessages([]);
-    setSuggestionCount(0);
+    setQuestionCount(0);
     setEnded(false);
-    setDiagnosisPhase("collecting");
-    setUserProfile({});
-    setCurrentSuggestion(null);
+    setPhase("collecting");
+    lastUserTextRef.current = "";
     askedFollowupsRef.current = [];
-    processingRef.current = false;
-    
-    // 再度挨拶
     const greet = seasonalGreeting();
+    // 再掲
     setMessages([
       { role: "assistant", text: `🍵 茶ソムリエ：${greet}` },
       { role: "assistant", text: "🍵 茶ソムリエ：今日はどんなお茶をお探しですか？あなたのお好みやお悩みなどお聞かせいただければ最適なお茶をご提案できますので、遠慮なくおっしゃってください。" },
@@ -236,16 +236,15 @@ ${suggestion.timing}`;
         gap: 16,
       }}
     >
-      <h1 style={{ fontSize: 28, fontWeight: 800 }}>お茶診断AI 🍵</h1>
-
-      <Image
-        src="/teaAI.png"
-        alt="茶ソムリエ"
-        width={280}
-        height={280}
-        style={{ objectFit: "contain", borderRadius: 16 }}
-        priority
-      />
+      {/* ヘッダー */}
+      <div style={{ textAlign: "center", marginBottom: 8 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#166534", margin: 0 }}>
+          🍵 茶ソムリエ診断
+        </h1>
+        <p style={{ fontSize: 16, color: "#4b5563", margin: "8px 0 0 0" }}>
+          あなたにぴったりのお茶を見つけましょう
+        </p>
+      </div>
 
       {/* チャットカード（高さ固定） */}
       <div
@@ -318,26 +317,28 @@ ${suggestion.timing}`;
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
-              ended ? "新しく始めるにはリセットを押してください" : 
-              diagnosisPhase === "confirming" ? "例: 飲んだことがある / 飲んだことがない / 苦手だった など" :
-              "お答えください"
+              ended
+                ? "新しく始めるにはリセットを押してください"
+                : phase === "confirming"
+                ? "例: 飲んだことがある / 飲んだことがない / 苦手だった など"
+                : "例: 疲れた / 集中したい / 眠れない など"
             }
             rows={2}
             required={!ended}
-            disabled={ended || processingRef.current}
+            disabled={ended || typing || processingRef.current}
             style={{
               flex: 1,
               border: "2px solid #000",
               borderRadius: 8,
               padding: 10,
               fontSize: 15,
-              background: ended || processingRef.current ? "#f1f5f9" : "#fff",
+              background: ended ? "#f1f5f9" : "#fff",
               color: "#000000",
             }}
           />
           <button
             type="submit"
-            disabled={ended || processingRef.current}
+            disabled={ended || typing || processingRef.current}
             style={{
               background: "#16a34a",
               color: "#fff",
@@ -345,8 +346,8 @@ ${suggestion.timing}`;
               borderRadius: 8,
               border: "none",
               fontWeight: 700,
-              cursor: ended || processingRef.current ? "not-allowed" : "pointer",
-              opacity: ended || processingRef.current ? 0.6 : 1,
+              cursor: ended || typing || processingRef.current ? "not-allowed" : "pointer",
+              opacity: ended || typing || processingRef.current ? 0.6 : 1,
               whiteSpace: "nowrap",
             }}
           >
