@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Image from "next/image";
 
 type Role = "assistant" | "user";
 type ChatMsg = { role: Role; text: string };
 type Suggestion = { name: string; reason: string };
+type ChatHistory = { role: Role; text: string };
 
 function seasonalGreeting() {
   const now = new Date();
@@ -36,37 +37,30 @@ function TypingDots() {
   return <span>{dots}</span>;
 }
 
-// 文脈に合わせた提案表現を生成
-function generateSuggestionText(suggestion: Suggestion, suggestionCount: number, userInput: string) {
-  const { name, reason } = suggestion;
-  
-  // ユーザーの入力内容に基づいて表現を変える
-  if (userInput.includes("眠") || userInput.includes("寝") || userInput.includes("リラックス")) {
-    return `そんな時には「${name}」がおすすめです。${reason}`;
-  } else if (userInput.includes("疲") || userInput.includes("だる")) {
-    return `疲れている時には「${name}」がぴったりです。${reason}`;
-  } else if (userInput.includes("集中") || userInput.includes("仕事") || userInput.includes("勉強")) {
-    return `集中したい時には「${name}」が良いですね。${reason}`;
-  } else if (userInput.includes("どちらも") || userInput.includes("両方") || userInput.includes("どっちも")) {
-    return `幅広い嗜好をお持ちですね。そんな方には「${name}」がおすすめです。${reason}`;
-  } else if (userInput.includes("温") || userInput.includes("冷")) {
-    return `温度の好みに合わせて「${name}」はいかがでしょうか。${reason}`;
-  } else if (suggestionCount === 0) {
-    return `そんな時におすすめなのは「${name}」です。${reason}`;
-  } else if (suggestionCount === 1) {
-    return `もう一つおすすめしたいのは「${name}」です。${reason}`;
-  } else {
-    return `最後に「${name}」もおすすめです。${reason}`;
-  }
+// 文字列正規化関数（重複チェック用）
+function norm(s: string): string {
+  return s.toLowerCase().replace(/[^\w\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/g, "");
 }
 
 export default function DiagnosisPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [typing, setTyping] = useState(false);
-  const [suggestionCount, setSuggestionCount] = useState(0); // 0→3
+  const [suggestionCount, setSuggestionCount] = useState(0);
   const [ended, setEnded] = useState(false);
-  const [lastUserInput, setLastUserInput] = useState(""); // 最後のユーザー入力を記録
+  const [lastUserInput, setLastUserInput] = useState("");
+  const [processedMessages, setProcessedMessages] = useState<Set<string>>(new Set());
+  const [timeChecked, setTimeChecked] = useState(false);
+  
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const askedFollowupsRef = useRef<string[]>([]);
+
+  // 新規/更新メッセージ・タイピングインジケータのたびに最下部へ
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, typing]);
 
   // 初回：挨拶→2秒後に誘導
   const greeting = useMemo(() => seasonalGreeting(), []);
@@ -86,20 +80,51 @@ export default function DiagnosisPage() {
   }, [greeting]);
 
   const historyForAPI = () =>
-    messages.slice(-8).map((m) => ({ role: m.role, text: m.text.replace(/^🍵 茶ソムリエ：/, "") }));
+    messages.slice(-6).map((m) => ({ role: m.role, text: m.text.replace(/^🍵 茶ソムリエ：/, "") }));
+
+  // 重複チェック付きメッセージ追加
+  const addMessageSafely = (role: Role, text: string) => {
+    const messageKey = `${role}:${text}`;
+    if (processedMessages.has(messageKey)) {
+      console.log("重複メッセージをスキップ:", text);
+      return;
+    }
+    setProcessedMessages(prev => new Set([...prev, messageKey]));
+    setMessages(prev => [...prev, { role, text }]);
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || ended) return;
 
     const userText = input.trim();
-    setLastUserInput(userText); // ユーザー入力を記録
-    setMessages((m) => [...m, { role: "user", text: userText }]);
+    
+    // 終了意図のチェック
+    if (userText.includes("最後") || userText.includes("終わり") || userText.includes("もう大丈夫") || userText.includes("ありがとう")) {
+      addMessageSafely("user", userText);
+      setInput("");
+      setTyping(true);
+      setTimeout(() => {
+        addMessageSafely("assistant", "🍵 茶ソムリエ：ありがとうございました。お茶でリフレッシュしてくださいね！");
+        setEnded(true);
+        setTyping(false);
+      }, 1000);
+      return;
+    }
+
+    setLastUserInput(userText);
+    addMessageSafely("user", userText);
     setInput("");
     setTyping(true);
 
     try {
-      console.log("API呼び出し開始:", { text: userText, suggestionCount, history: historyForAPI() });
+      console.log("API呼び出し開始:", { 
+        text: userText, 
+        suggestionCount, 
+        history: historyForAPI(),
+        askedFollowups: askedFollowupsRef.current,
+        lowEnergyHint: userText.includes("疲") || userText.includes("だる") || userText.includes("しんど")
+      });
       
       const res = await fetch("/api/diagnose", {
         method: "POST",
@@ -108,6 +133,8 @@ export default function DiagnosisPage() {
           text: userText,
           suggestionCount,
           history: historyForAPI(),
+          askedFollowups: askedFollowupsRef.current,
+          lowEnergyHint: userText.includes("疲") || userText.includes("だる") || userText.includes("しんど")
         }),
       });
       
@@ -120,62 +147,77 @@ export default function DiagnosisPage() {
       const data = await res.json();
       console.log("APIデータ:", data);
 
-      // assistant_messages（前置きなど）を順に表示 - 重複チェック追加
+      // assistant_messages（前置きなど）を順に表示
       if (Array.isArray(data?.assistant_messages)) {
         const delay = 200;
         data.assistant_messages.forEach((t: string, index: number) => {
           setTimeout(() => {
-            setMessages((arr) => {
-              // 重複チェック：同じメッセージが既に存在しないか確認
-              const messageText = `🍵 茶ソムリエ：${t}`;
-              const isDuplicate = arr.some(msg => msg.text === messageText);
-              if (isDuplicate) {
-                console.log("重複メッセージをスキップ:", messageText);
-                return arr;
-              }
-              return [...arr, { role: "assistant", text: messageText }];
-            });
+            addMessageSafely("assistant", `🍵 茶ソムリエ：${t}`);
           }, delay + (index * 250));
         });
       }
 
-      // 提案があれば1つだけ表示 - 文脈に合わせた自然な表現
+      // 提案があれば1つだけ表示
       if (data?.suggestion?.name) {
         const n = suggestionCount + 1;
         setTimeout(() => {
-          const suggestionText = generateSuggestionText(data.suggestion, suggestionCount, lastUserInput);
-          setMessages((arr) => [
-            ...arr,
-            {
-              role: "assistant",
-              text: `🍵 茶ソムリエ：${suggestionText}`,
-            },
-          ]);
+          const suggestionText = `そんな方には「${data.suggestion.name}」がおすすめです。${data.suggestion.reason}`;
+          addMessageSafely("assistant", `🍵 茶ソムリエ：${suggestionText}`);
           setSuggestionCount(n);
         }, 700);
       }
 
-      // 終了 or フォローアップ質問
+      // 時間確認（5回提案後）
+      if (data?.time_check && !timeChecked) {
+        setTimeout(() => {
+          addMessageSafely("assistant", "🍵 茶ソムリエ：お時間大丈夫ですか？お茶の話をもう少し続けてもよろしいでしょうか？");
+          setTimeChecked(true);
+        }, 1200);
+        return;
+      }
+
+      // フォローアップ質問の重複チェック
+      if (data?.followup_question) {
+        const normalizedQuestion = norm(data.followup_question);
+        const isDuplicate = askedFollowupsRef.current.some(asked => 
+          norm(asked) === normalizedQuestion || 
+          (norm(asked).includes("温") && norm(data.followup_question).includes("温")) ||
+          (norm(asked).includes("冷") && norm(data.followup_question).includes("冷"))
+        );
+
+        if (isDuplicate) {
+          console.log("重複質問を検出、代替質問を使用");
+          const alternatives = [
+            "カフェインの有無は気になりますか？",
+            "香りの強いお茶と控えめなお茶、どちらがお好みですか？",
+            "甘いお茶とすっきりしたお茶、どちらがお好みですか？",
+            "お茶を淹れる時間はありますか？",
+            "お茶と一緒に何かお菓子はいかがですか？"
+          ];
+          const alternative = alternatives[Math.floor(Math.random() * alternatives.length)];
+          setTimeout(() => {
+            addMessageSafely("assistant", `🍵 茶ソムリエ：${alternative}`);
+            askedFollowupsRef.current.push(alternative);
+          }, 1100);
+        } else {
+          setTimeout(() => {
+            addMessageSafely("assistant", `🍵 茶ソムリエ：${data.followup_question}`);
+            askedFollowupsRef.current.push(data.followup_question);
+          }, 1100);
+        }
+      }
+
+      // 終了処理
       if (data?.end) {
         const closing = data?.closing ?? "今日はこのあたりでおすすめは以上です。";
         setTimeout(() => {
-          setMessages((arr) => [...arr, { role: "assistant", text: `🍵 茶ソムリエ：${closing}` }]);
+          addMessageSafely("assistant", `🍵 茶ソムリエ：${closing}`);
           setEnded(true);
         }, 1200);
-      } else if (data?.followup_question) {
-        setTimeout(() => {
-          setMessages((arr) => [
-            ...arr,
-            { role: "assistant", text: `🍵 茶ソムリエ：${data.followup_question}` },
-          ]);
-        }, 1100);
       }
     } catch (error) {
       console.error("エラー詳細:", error);
-      setMessages((arr) => [
-        ...arr,
-        { role: "assistant", text: "🍵 茶ソムリエ：申し訳ありません。システムエラーが発生しました。もう一度お試しください。" },
-      ]);
+      addMessageSafely("assistant", "🍵 茶ソムリエ：申し訳ありません。システムエラーが発生しました。もう一度お試しください。");
     } finally {
       setTyping(false);
     }
@@ -186,6 +228,10 @@ export default function DiagnosisPage() {
     setSuggestionCount(0);
     setEnded(false);
     setLastUserInput("");
+    setProcessedMessages(new Set());
+    setTimeChecked(false);
+    askedFollowupsRef.current = [];
+    
     // 再度挨拶
     const greet = seasonalGreeting();
     setMessages([
@@ -217,6 +263,7 @@ export default function DiagnosisPage() {
         priority
       />
 
+      {/* チャットカード（高さ固定） */}
       <div
         style={{
           width: "100%",
@@ -226,48 +273,63 @@ export default function DiagnosisPage() {
           borderRadius: 16,
           padding: 16,
           boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          height: 520,          // ★カード自体の高さを固定
+          overflow: "hidden",   // ★外側にスクロールが出ないように隠す
         }}
       >
-        {/* チャット表示 */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {messages.map((m, i) => (
-            <div
-              key={i}
-              style={{
-                alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                background: m.role === "user" ? "#e0f2fe" : "#f0fdf4",
-                color: m.role === "user" ? "#0c4a6e" : "#166534",
-                border: `1px solid ${m.role === "user" ? "#7dd3fc" : "#86efac"}`,
-                padding: "10px 12px",
-                borderRadius: 12,
-                maxWidth: "80%",
-                whiteSpace: "pre-wrap",
-                lineHeight: 1.6,
-              }}
-            >
-              {m.text}
-            </div>
-          ))}
-          {typing && (
-            <div
-              style={{
-                alignSelf: "flex-start",
-                background: "#f0fdf4",
-                color: "#166534",
-                border: "1px solid #86efac",
-                padding: "10px 12px",
-                borderRadius: 12,
-                maxWidth: "60%",
-                fontFamily: "monospace",
-              }}
-            >
-              🍵 茶ソムリエ：<TypingDots />
-            </div>
-          )}
+        {/* スクロールするメッセージ領域（カード内） */}
+        <div
+          ref={chatScrollRef}
+          style={{
+            flex: 1,
+            overflowY: "auto",   // ★ここに縦スクロールが出る
+            paddingRight: 6,     // スクロールバー余白
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {messages.map((m, i) => (
+              <div
+                key={i}
+                style={{
+                  alignSelf: m.role === "user" ? "flex-end" : "flex-start",
+                  background: m.role === "user" ? "#e0f2fe" : "#f0fdf4",
+                  color: m.role === "user" ? "#0c4a6e" : "#166534",
+                  border: `1px solid ${m.role === "user" ? "#7dd3fc" : "#86efac"}`,
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  maxWidth: "80%",
+                  whiteSpace: "pre-wrap",
+                  lineHeight: 1.6,
+                }}
+              >
+                {m.text}
+              </div>
+            ))}
+
+            {typing && (
+              <div
+                style={{
+                  alignSelf: "flex-start",
+                  background: "#f0fdf4",
+                  color: "#166534",
+                  border: "1px solid #86efac",
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  maxWidth: "60%",
+                  fontFamily: "monospace",
+                }}
+              >
+                🍵 茶ソムリエ：<TypingDots />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 入力 */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        {/* 入力フォーム（カード下部に固定） */}
+        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8 }}>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
