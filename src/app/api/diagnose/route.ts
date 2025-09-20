@@ -130,7 +130,8 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("API error:", error);
-    return NextResponse.json(mockTurn(suggestionCount, text));
+    // suggestionCountとtextをデフォルト値で使用
+    return NextResponse.json(mockTurn(0, ""));
   }
 }
 
