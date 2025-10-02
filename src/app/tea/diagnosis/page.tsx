@@ -66,7 +66,7 @@ export default function DiagnosisPage() {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [questionCount, setQuestionCount] = useState(0);
+  const [suggestionCount, setSuggestionCount] = useState(0); // 0→3
   const [ended, setEnded] = useState(false);
   const [phase, setPhase] = useState<"collecting" | "suggesting" | "confirming">("collecting");
   
@@ -104,27 +104,37 @@ export default function DiagnosisPage() {
     messages.slice(-8).map(m => ({ role: m.role, text: m.text.replace(/^🍵 茶ソムリエ：/, "") }));
 
   // 「終わりたい」即終了ワード
-  const END_PATTERNS = ["もう大丈夫", "大丈夫です", "最後と言った", "終わり", "結構です", "ありがとう", "十分です", "これでいい"];
+  const END_PATTERNS = ["もう大丈夫", "大丈夫です", "最後と言った", "終わり", "結構です", "ありがとう", "十分です", "これでいい", "ない", "大丈夫", "ありません", "特にない"];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!input.trim() || ended || processingRef.current) return;
+    if (!input.trim() || ended) return;
 
     const userText = input.trim();
     lastUserTextRef.current = userText;
-    processingRef.current = true;
 
-    // 即終了フレーズ検知
-    if (END_PATTERNS.some(p => userText.includes(p))) {
+    // 即終了フレーズ検知（お茶の提案が完了していない場合は無効）
+    if (suggestionCount < 3 && END_PATTERNS.some(p => userText.includes(p))) {
       setMessages(m => [...m, { role: "user", text: userText }]);
       setInput("");
       setTyping(true);
       setTimeout(() => {
-        setMessages(arr => [...arr, { role: "assistant", text: "🍵 茶ソムリエ：承知しました。無理のないときに、またいつでもどうぞ。" }]);
+        setMessages(arr => [...arr, { role: "assistant", text: "🍵 茶ソムリエ：もう少し詳しくお聞かせください。最適なお茶をご提案させていただきますので。" }]);
+        setTyping(false);
+      }, 420);
+      return;
+    }
+    
+    // お茶の提案が完了した後の終了フレーズ検知
+    if (suggestionCount >= 3 && END_PATTERNS.some(p => userText.includes(p))) {
+      setMessages(m => [...m, { role: "user", text: userText }]);
+      setInput("");
+      setTyping(true);
+      setTimeout(() => {
+        setMessages(arr => [...arr, { role: "assistant", text: "🍵 茶ソムリエ：承知いたしました。またのご来店をお待ちしております。お疲れ様でした。" }]);
         setEnded(true);
         setTyping(false);
       }, 420);
-      processingRef.current = false;
       return;
     }
 
@@ -139,7 +149,7 @@ export default function DiagnosisPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: userText,
-          suggestionCount: questionCount,
+          suggestionCount,
           history: historyForAPI(),
           askedFollowups: askedFollowupsRef.current,
           lowEnergyHint: isLowEnergy(userText),
@@ -150,6 +160,9 @@ export default function DiagnosisPage() {
       if (!res.ok) throw new Error(`API ${res.status}`);
 
       const data = await res.json();
+      
+      // デバッグ用ログ
+      console.log("API Response:", data);
 
       // フェーズ更新
       if (data?.phase) {
@@ -167,28 +180,33 @@ export default function DiagnosisPage() {
 
       // お茶の提案
       if (data?.suggestion?.tea) {
-        const text = renderSuggestion(data.suggestion as Suggestion, questionCount, lastUserTextRef.current);
+        const turn = suggestionCount; // 0,1,2
+        const text = renderSuggestion(data.suggestion as Suggestion, turn, lastUserTextRef.current);
         setTimeout(() => {
           setMessages(arr => [...arr, { role: "assistant", text: `🍵 茶ソムリエ：${text}` }]);
+          setSuggestionCount(turn + 1);
         }, 650);
       }
 
       // 診断質問（重複チェック付き）
       if (data?.diagnosis_question) {
         const dq = String(data.diagnosis_question);
+        console.log("質問:", dq);
+        console.log("過去の質問:", askedFollowupsRef.current);
         const isDup = askedFollowupsRef.current.some(
           q => norm(q) === norm(dq) || norm(dq).includes(norm(q)) || norm(q).includes(norm(dq))
         );
+        console.log("重複チェック:", isDup);
         if (!isDup) {
           askedFollowupsRef.current = [...askedFollowupsRef.current.slice(-5), dq];
-          setQuestionCount(prev => prev + 1);
           setTimeout(() => {
             setMessages(arr => [...arr, { role: "assistant", text: `🍵 茶ソムリエ：${dq}` }]);
           }, 1000);
         } else {
-          // 重複検出：別軸で聞く or 終了寄りへ
-          const fallback =
-            questionCount < 2
+          // 重複検出：お茶提案後の場合は「他にも気になることがありますか？」と聞く
+          const fallback = suggestionCount >= 3
+            ? "他にも気になることがありますか？"
+            : suggestionCount < 2
               ? "では別の切り口でお伺いします。カフェインは控えたいですか？それとも気分転換に少し欲しいですか？"
               : "ここまでで十分な情報が集まりました。最適なお茶をご提案させていただきますね。";
           setTimeout(() => {
@@ -197,22 +215,24 @@ export default function DiagnosisPage() {
         }
       }
 
-    } catch {
+    } catch (error) {
+      console.error("API Error:", error);
       setMessages(arr => [
         ...arr,
         { role: "assistant", text: "🍵 茶ソムリエ：すみません、うまく受け取れませんでした。もう一度だけ送っていただけますか？" },
       ]);
     } finally {
+      console.log("Setting typing to false");
       setTyping(false);
-      processingRef.current = false;
     }
   }
 
   function resetAll() {
     setMessages([]);
-    setQuestionCount(0);
+    setSuggestionCount(0);
     setEnded(false);
     setPhase("collecting");
+    setTyping(false);
     lastUserTextRef.current = "";
     askedFollowupsRef.current = [];
     const greet = seasonalGreeting();
@@ -324,7 +344,7 @@ export default function DiagnosisPage() {
             }
             rows={2}
             required={!ended}
-            disabled={ended || typing || processingRef.current}
+            disabled={ended || typing}
             style={{
               flex: 1,
               border: "2px solid #000",
@@ -337,7 +357,7 @@ export default function DiagnosisPage() {
           />
           <button
             type="submit"
-            disabled={ended || typing || processingRef.current}
+            disabled={ended || typing}
             style={{
               background: "#16a34a",
               color: "#fff",
@@ -345,8 +365,8 @@ export default function DiagnosisPage() {
               borderRadius: 8,
               border: "none",
               fontWeight: 700,
-              cursor: ended || typing || processingRef.current ? "not-allowed" : "pointer",
-              opacity: ended || typing || processingRef.current ? 0.6 : 1,
+              cursor: ended || typing ? "not-allowed" : "pointer",
+              opacity: ended || typing ? 0.6 : 1,
               whiteSpace: "nowrap",
             }}
           >

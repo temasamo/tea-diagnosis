@@ -18,8 +18,11 @@ export async function POST(request: NextRequest) {
       "★診断ルール（最重要）：",
       "  1) 質問回数が3回に達したら必ずお茶を提案する",
       "  2) 質問は具体的で分かりやすくする",
-      "  3) 同じ質問は絶対に重複しない",
+      "  3) 同じ質問は絶対に重複しない（askedFollowupsを必ず確認）",
       "  4) suggestionCountが3以上なら必ずsuggestionを返す",
+      "  5) お茶を提案した後は「他にも気になることがありますか？」と聞く",
+      "  6) ユーザーが「ない」「大丈夫」などと答えたら「またのご来店をお待ちしております」で終了",
+      "  7) 過去の質問（askedFollowups）と全く同じ質問は絶対にしない",
       "",
       "★具体的な質問例：",
       "  - 「疲れている」→「どの時間帯に疲れを感じますか？（朝・昼・夜）」",
@@ -44,6 +47,8 @@ export async function POST(request: NextRequest) {
       "  (b) diagnosis_question：具体的で分かりやすい質問を1つだけ（重複厳禁）",
       "  (c) suggestion：suggestionCountが3以上なら必ずお茶を提案",
       "  (d) phase：現在のフェーズ（collecting/suggesting/confirming）",
+      "  (e) お茶提案後は「他にも気になることがありますか？」と聞く",
+      "  (f) ユーザーが「ない」等と答えたら「またのご来店をお待ちしております」で終了",
       "",
       "★重要：JSON形式で必ず応答すること。他の文字は一切含めない。",
       "",
@@ -68,6 +73,9 @@ export async function POST(request: NextRequest) {
       "",
       "会話履歴:",
       ...history.slice(-6).map((h: ChatHistory) => `${h.role}: ${h.text}`),
+      "",
+      "★重要：過去の質問（askedFollowups）と全く同じ質問は絶対にしないこと。",
+      "askedFollowupsの内容を必ず確認し、異なる角度から質問すること。",
     ].join("\n");
 
     if (!process.env.OPENAI_API_KEY) {
