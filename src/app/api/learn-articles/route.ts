@@ -72,9 +72,9 @@ async function fetchHealTeaArticles(): Promise<ArticleData[]> {
   } catch (error) {
     console.error('Error fetching HealTea articles:', error);
     console.error('Error details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     });
     return [];
   }
@@ -83,7 +83,7 @@ async function fetchHealTeaArticles(): Promise<ArticleData[]> {
 // 記事の本文を抽出
 function extractArticleContent(html: string): string {
   // 記事の本文部分を抽出（簡易版）
-  const contentMatch = html.match(/<article[^>]*>(.*?)<\/article>/s);
+  const contentMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/);
   if (contentMatch) {
     return contentMatch[1]
       .replace(/<[^>]*>/g, ' ') // HTMLタグを除去
