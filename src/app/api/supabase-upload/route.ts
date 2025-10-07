@@ -25,10 +25,12 @@ export async function POST(request: NextRequest) {
         console.log(`Knowledge entries returned: ${knowledgeEntries.length}`);
         allKnowledgeEntries.push(...knowledgeEntries);
         console.log(`Extracted ${knowledgeEntries.length} knowledge entries from: ${article.title}`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`Error processing article ${article.title}:`, error);
-        console.error('Error details:', error.message);
-        console.error('Error stack:', error.stack);
+        if (error instanceof Error) {
+          console.error('Error details:', error.message);
+          console.error('Error stack:', error.stack);
+        }
         // 個別記事のエラーは無視して続行
       }
     }
@@ -44,10 +46,11 @@ export async function POST(request: NextRequest) {
       sampleEntries: allKnowledgeEntries.slice(0, 5) // 最初の5件をサンプルとして返す
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in supabase-upload API:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `記事の学習中にエラーが発生しました: ${error.message}` },
+      { error: `記事の学習中にエラーが発生しました: ${errorMessage}` },
       { status: 500 }
     );
   }
@@ -64,10 +67,11 @@ export async function GET() {
       allEntries: allKnowledge
     });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching Supabase data:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: `データの取得中にエラーが発生しました: ${error.message}` },
+      { error: `データの取得中にエラーが発生しました: ${errorMessage}` },
       { status: 500 }
     );
   }
