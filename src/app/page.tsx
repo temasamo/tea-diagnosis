@@ -131,6 +131,33 @@ export default function HomePage() {
         </Link>
       </div>
 
+      {/* 管理画面リンク */}
+      <div style={{ 
+        marginTop: 32, 
+        textAlign: "center" 
+      }}>
+        <Link href="/admin" style={{ textDecoration: "none" }}>
+          <div style={{
+            background: "#f59e0b",
+            color: "#fff",
+            padding: "12px 24px",
+            borderRadius: 8,
+            fontWeight: 600,
+            display: "inline-block",
+            transition: "background-color 0.2s"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#d97706";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "#f59e0b";
+          }}
+          >
+            🔧 管理画面
+          </div>
+        </Link>
+      </div>
+
       {/* フッター */}
       <div style={{ 
         marginTop: 48, 
