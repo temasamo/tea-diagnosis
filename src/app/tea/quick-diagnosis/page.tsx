@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface ChatMessage {
   id: string;
   type: 'bot' | 'user';
   content: string;
   timestamp: Date;
+  url?: string;
 }
 
 interface Question {
@@ -56,7 +57,7 @@ const questions: Question[] = [
   },
   {
     id: 'goal',
-    text: '今日の目標は？',
+    text: '今日は私からの提案にどんなことを期待されてますか？',
     options: ['リフレッシュ', '集中力アップ', 'リラックス', '健康維持', '美味しいお茶を楽しむ'],
     category: 'goal'
   }
@@ -69,6 +70,9 @@ export default function QuickDiagnosisPage() {
   const [isComplete, setIsComplete] = useState(false);
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showShopOptions, setShowShopOptions] = useState(false);
+  const [selectedShop, setSelectedShop] = useState<string | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // 初期メッセージ
@@ -95,15 +99,26 @@ export default function QuickDiagnosisPage() {
     }, 1500);
   }, []);
 
-  const addMessage = (content: string, type: 'bot' | 'user') => {
+  const addMessage = (content: string, type: 'bot' | 'user', url?: string) => {
     const newMessage: ChatMessage = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
       content,
-      timestamp: new Date()
+      timestamp: new Date(),
+      url
     };
     setMessages(prev => [...prev, newMessage]);
   };
+
+  // チャットの自動スクロール
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // メッセージが追加された時に自動スクロール
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleAnswer = (answer: string) => {
     const currentQuestion = questions[currentQuestionIndex];
@@ -113,20 +128,88 @@ export default function QuickDiagnosisPage() {
     // ユーザーの回答を追加
     addMessage(answer, 'user');
 
-    // 次の質問または診断完了
+    // 相槌と次の質問または診断完了
     if (currentQuestionIndex < questions.length - 1) {
       setTimeout(() => {
-        setCurrentQuestionIndex(prev => prev + 1);
-        const nextQuestion = questions[currentQuestionIndex + 1];
-        addMessage(nextQuestion.text, 'bot');
+        // 相槌を追加
+        const aizuchi = getAizuchi(answer, currentQuestionIndex);
+        addMessage(aizuchi, 'bot');
+        
+        // 少し遅延してから次の質問
+        setTimeout(() => {
+          setCurrentQuestionIndex(prev => prev + 1);
+          const nextQuestion = questions[currentQuestionIndex + 1];
+          addMessage(nextQuestion.text, 'bot');
+        }, 1000);
       }, 1500);
     } else {
       // 診断完了
       setTimeout(() => {
-        setIsComplete(true);
-        generateRecommendation(newAnswers);
+        const finalAizuchi = getFinalAizuchi(answer);
+        addMessage(finalAizuchi, 'bot');
+        
+        setTimeout(() => {
+          setIsComplete(true);
+          generateRecommendation(newAnswers);
+        }, 1000);
       }, 1500);
     }
+  };
+
+  // 相槌を生成する関数
+  const getAizuchi = (answer: string, questionIndex: number): string => {
+    // ユーザーの回答内容に応じた適切な相槌
+    let aizuchi = '';
+    
+    // 回答内容に基づく相槌
+    if (answer.includes('リラックス') || answer.includes('癒し') || answer.includes('落ち着き')) {
+      aizuchi = 'そうなんですね。リラックスしたい気持ち、よく分かります。';
+    } else if (answer.includes('集中') || answer.includes('仕事') || answer.includes('勉強')) {
+      aizuchi = 'なるほど！集中したい時ですね。';
+    } else if (answer.includes('健康') || answer.includes('体調') || answer.includes('免疫力')) {
+      aizuchi = '健康を意識されているんですね。';
+    } else if (answer.includes('美味しい') || answer.includes('楽しみ') || answer.includes('味')) {
+      aizuchi = 'お茶を楽しみたい気持ち、素敵ですね。';
+    } else if (answer.includes('特に') || answer.includes('こだわり') || answer.includes('ない')) {
+      aizuchi = '分かりました。';
+    } else if (answer.includes('朝') || answer.includes('昼') || answer.includes('夜')) {
+      aizuchi = `${answer}の時間帯ですね。`;
+    } else {
+      // デフォルトの相槌
+      const defaultAizuchi = [
+        'なるほど！',
+        '分かりました！',
+        'ありがとうございます！',
+        'そうなんですね。'
+      ];
+      aizuchi = defaultAizuchi[Math.floor(Math.random() * defaultAizuchi.length)];
+    }
+    
+    const transitions = [
+      'それでは、',
+      'では、',
+      '次に、',
+      '続いて、',
+      'もう一つ、'
+    ];
+    
+    const randomTransition = transitions[Math.floor(Math.random() * transitions.length)];
+    
+    return `${aizuchi} ${randomTransition}`;
+  };
+
+  // 最後の相槌を生成する関数
+  const getFinalAizuchi = (answer: string): string => {
+    const finalAizuchiOptions = [
+      'ありがとうございます！',
+      '分かりました！',
+      '承知いたしました！',
+      'なるほど！',
+      'そうですね！'
+    ];
+    
+    const randomFinalAizuchi = finalAizuchiOptions[Math.floor(Math.random() * finalAizuchiOptions.length)];
+    return `${randomFinalAizuchi} それでは、あなたにぴったりのお茶をご提案させていただきますね！`;
   };
 
   const generateRecommendation = async (userAnswers: Record<string, string>) => {
@@ -149,6 +232,12 @@ export default function QuickDiagnosisPage() {
         addMessage(`🍯 甘味料: ${data.recommendation.sweetener}`, 'bot');
         addMessage(`🍪 お茶菓子: ${data.recommendation.snack}`, 'bot');
         addMessage(`💡 ${data.recommendation.reason}`, 'bot');
+        
+        // ショップ確認メッセージを追加
+        setTimeout(() => {
+          addMessage('このご提案がお気に召したら、ご希望のネットショップへお繋げすることができます。いかがしますか？', 'bot');
+          setShowShopOptions(true);
+        }, 2000);
       } else {
         throw new Error('診断に失敗しました');
       }
@@ -167,6 +256,8 @@ export default function QuickDiagnosisPage() {
     setIsComplete(false);
     setRecommendation(null);
     setIsLoading(false);
+    setShowShopOptions(false);
+    setSelectedShop(null);
     
     // 初期メッセージを再表示
     setTimeout(() => {
@@ -178,6 +269,106 @@ export default function QuickDiagnosisPage() {
       };
       setMessages([initialMessage]);
     }, 100);
+  };
+
+  // ショップ選択ハンドラー
+  const handleShopSelection = (shop: string) => {
+    if (shop === 'no') {
+      addMessage('いらない', 'user');
+      addMessage('ありがとうございます！またお気軽にご相談ください。', 'bot');
+      setShowShopOptions(false);
+      return;
+    }
+
+    if (shop === 'yes') {
+      addMessage('見たい', 'user');
+      addMessage('どちらのモールがよろしいですか？', 'bot');
+      setSelectedShop('selecting');
+      return;
+    }
+
+    // モール選択
+    if (selectedShop === 'selecting') {
+      addMessage(shop, 'user');
+      generateAffiliateLinks(shop);
+    }
+  };
+
+  // アフィリエイトリンク生成
+  const generateAffiliateLinks = (shop: string) => {
+    if (!recommendation) return;
+
+    const searchKeywords = {
+      tea: recommendation.tea,
+      sweetener: recommendation.sweetener,
+      snack: recommendation.snack
+    };
+
+    let links: { name: string; url: string }[] = [];
+
+    switch (shop) {
+      case 'Amazon':
+        links = [
+          {
+            name: `${searchKeywords.tea}をAmazonで探す`,
+            url: `https://www.amazon.co.jp/s?k=${encodeURIComponent(searchKeywords.tea)}&tag=temasamo1220d-22`
+          },
+          {
+            name: `${searchKeywords.sweetener}をAmazonで探す`,
+            url: `https://www.amazon.co.jp/s?k=${encodeURIComponent(searchKeywords.sweetener)}&tag=temasamo1220d-22`
+          },
+          {
+            name: `${searchKeywords.snack}をAmazonで探す`,
+            url: `https://www.amazon.co.jp/s?k=${encodeURIComponent(searchKeywords.snack)}&tag=temasamo1220d-22`
+          }
+        ];
+        break;
+
+      case '楽天':
+        const rakutenBaseUrl = 'https://hb.afl.rakuten.co.jp/hgc/4c5e3919.1c76af65.4c5e391a.0caa9dc5/?pc=';
+        links = [
+          {
+            name: `${searchKeywords.tea}を楽天で探す`,
+            url: `${rakutenBaseUrl}https%3A%2F%2Fsearch.rakuten.co.jp%2Fsearch%2Fmall%2F${encodeURIComponent(searchKeywords.tea)}%2F`
+          },
+          {
+            name: `${searchKeywords.sweetener}を楽天で探す`,
+            url: `${rakutenBaseUrl}https%3A%2F%2Fsearch.rakuten.co.jp%2Fsearch%2Fmall%2F${encodeURIComponent(searchKeywords.sweetener)}%2F`
+          },
+          {
+            name: `${searchKeywords.snack}を楽天で探す`,
+            url: `${rakutenBaseUrl}https%3A%2F%2Fsearch.rakuten.co.jp%2Fsearch%2Fmall%2F${encodeURIComponent(searchKeywords.snack)}%2F`
+          }
+        ];
+        break;
+
+      case 'Yahooショップ':
+        const yahooBaseUrl = 'https://ck.jp.ap.valuecommerce.com/servlet/referral?sid=3751180&pid=892078463&vc_url=';
+        links = [
+          {
+            name: `${searchKeywords.tea}をYahooショップで探す`,
+            url: `${yahooBaseUrl}https%3A%2F%2Fshopping.yahoo.co.jp%2Fsearch%2F%3Fp%3D${encodeURIComponent(searchKeywords.tea)}`
+          },
+          {
+            name: `${searchKeywords.sweetener}をYahooショップで探す`,
+            url: `${yahooBaseUrl}https%3A%2F%2Fshopping.yahoo.co.jp%2Fsearch%2F%3Fp%3D${encodeURIComponent(searchKeywords.sweetener)}`
+          },
+          {
+            name: `${searchKeywords.snack}をYahooショップで探す`,
+            url: `${yahooBaseUrl}https%3A%2F%2Fshopping.yahoo.co.jp%2Fsearch%2F%3Fp%3D${encodeURIComponent(searchKeywords.snack)}`
+          }
+        ];
+        break;
+    }
+
+    // リンクをメッセージとして追加
+    addMessage(`${shop}での検索リンクをご用意しました！`, 'bot');
+    links.forEach(link => {
+      addMessage(`🔗 ${link.name}`, 'bot', link.url);
+    });
+
+    setShowShopOptions(false);
+    setSelectedShop(null);
   };
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -208,7 +399,18 @@ export default function QuickDiagnosisPage() {
                       : 'bg-green-100 text-gray-800'
                   }`}
                 >
-                  {message.content}
+                  {message.url ? (
+                    <a
+                      href={message.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {message.content}
+                    </a>
+                  ) : (
+                    message.content
+                  )}
                 </div>
               </div>
             ))}
@@ -217,6 +419,7 @@ export default function QuickDiagnosisPage() {
                 診断中...
               </div>
             )}
+            <div ref={chatEndRef} />
           </div>
 
           {!isComplete && currentQuestionIndex >= 0 && currentQuestion && (
@@ -252,6 +455,52 @@ export default function QuickDiagnosisPage() {
               >
                 もう一度診断する
               </button>
+            </div>
+          )}
+
+          {/* ショップ選択UI */}
+          {showShopOptions && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <div className="space-y-2">
+                <button
+                  onClick={() => handleShopSelection('yes')}
+                  className="w-full p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-gray-800 font-medium"
+                >
+                  見たい
+                </button>
+                <button
+                  onClick={() => handleShopSelection('no')}
+                  className="w-full p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-gray-800 font-medium"
+                >
+                  いらない
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* モール選択UI */}
+          {selectedShop === 'selecting' && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <div className="space-y-2">
+                <button
+                  onClick={() => handleShopSelection('Amazon')}
+                  className="w-full p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-gray-800 font-medium"
+                >
+                  Amazon
+                </button>
+                <button
+                  onClick={() => handleShopSelection('楽天')}
+                  className="w-full p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-gray-800 font-medium"
+                >
+                  楽天
+                </button>
+                <button
+                  onClick={() => handleShopSelection('Yahooショップ')}
+                  className="w-full p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-gray-800 font-medium"
+                >
+                  Yahooショップ
+                </button>
+              </div>
             </div>
           )}
         </div>
