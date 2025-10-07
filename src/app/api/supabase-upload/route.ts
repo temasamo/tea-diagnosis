@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         console.log(`Knowledge entries returned: ${knowledgeEntries.length}`);
         allKnowledgeEntries.push(...knowledgeEntries);
         console.log(`Extracted ${knowledgeEntries.length} knowledge entries from: ${article.title}`);
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error processing article ${article.title}:`, error);
         console.error('Error details:', error.message);
         console.error('Error stack:', error.stack);
@@ -44,10 +44,10 @@ export async function POST(request: NextRequest) {
       sampleEntries: allKnowledgeEntries.slice(0, 5) // 最初の5件をサンプルとして返す
     });
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in supabase-upload API:', error);
     return NextResponse.json(
-      { error: '記事の学習中にエラーが発生しました' },
+      { error: `記事の学習中にエラーが発生しました: ${error.message}` },
       { status: 500 }
     );
   }
@@ -64,10 +64,10 @@ export async function GET() {
       allEntries: allKnowledge
     });
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching Supabase data:', error);
     return NextResponse.json(
-      { error: 'データの取得中にエラーが発生しました' },
+      { error: `データの取得中にエラーが発生しました: ${error.message}` },
       { status: 500 }
     );
   }
