@@ -64,7 +64,7 @@ const questions: Question[] = [
 
 export default function QuickDiagnosisPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isComplete, setIsComplete] = useState(false);
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
@@ -78,7 +78,21 @@ export default function QuickDiagnosisPage() {
       content: 'こんにちは！🍵 あなたにぴったりのお茶を見つけるために、いくつか質問させていただきますね。',
       timestamp: new Date()
     };
+    
     setMessages([initialMessage]);
+    
+    // 少し遅延してから最初の質問を表示
+    setTimeout(() => {
+      setCurrentQuestionIndex(0);
+      const firstQuestion = questions[0];
+      const firstQuestionMessage: ChatMessage = {
+        id: '2',
+        type: 'bot',
+        content: firstQuestion.text,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, firstQuestionMessage]);
+    }, 1500);
   }, []);
 
   const addMessage = (content: string, type: 'bot' | 'user') => {
@@ -105,13 +119,13 @@ export default function QuickDiagnosisPage() {
         setCurrentQuestionIndex(prev => prev + 1);
         const nextQuestion = questions[currentQuestionIndex + 1];
         addMessage(nextQuestion.text, 'bot');
-      }, 1000);
+      }, 1500);
     } else {
       // 診断完了
       setTimeout(() => {
         setIsComplete(true);
         generateRecommendation(newAnswers);
-      }, 1000);
+      }, 1500);
     }
   };
 
@@ -205,7 +219,7 @@ export default function QuickDiagnosisPage() {
             )}
           </div>
 
-          {!isComplete && currentQuestion && (
+          {!isComplete && currentQuestionIndex >= 0 && currentQuestion && (
             <div className="space-y-2">
               <p className="text-sm text-gray-600 mb-3">
                 質問 {currentQuestionIndex + 1} / {questions.length}
@@ -221,6 +235,12 @@ export default function QuickDiagnosisPage() {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {!isComplete && currentQuestionIndex < 0 && (
+            <div className="text-center text-gray-500">
+              質問を準備中...
             </div>
           )}
 
