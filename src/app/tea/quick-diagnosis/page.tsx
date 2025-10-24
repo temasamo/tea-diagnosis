@@ -77,7 +77,7 @@ export default function QuickDiagnosisPage() {
   useEffect(() => {
     // 初期メッセージ
     const initialMessage: ChatMessage = {
-      id: '1',
+      id: `${Date.now()}-initial`,
       type: 'bot',
       content: 'こんにちは！🍵 あなたにぴったりのお茶を見つけるために、いくつか質問させていただきますね。',
       timestamp: new Date()
@@ -88,14 +88,7 @@ export default function QuickDiagnosisPage() {
     // 少し遅延してから最初の質問を表示
     setTimeout(() => {
       setCurrentQuestionIndex(0);
-      const firstQuestion = questions[0];
-      const firstQuestionMessage: ChatMessage = {
-        id: '2',
-        type: 'bot',
-        content: firstQuestion.text,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, firstQuestionMessage]);
+      // 質問の表示は useEffect で自動的に行われる
     }, 1500);
   }, []);
 
@@ -120,6 +113,20 @@ export default function QuickDiagnosisPage() {
     scrollToBottom();
   }, [messages]);
 
+  // currentQuestionIndexが変更された時に質問を表示
+  useEffect(() => {
+    if (currentQuestionIndex >= 0 && currentQuestionIndex < questions.length) {
+      const question = questions[currentQuestionIndex];
+      const questionMessage: ChatMessage = {
+        id: `${Date.now()}-question-${currentQuestionIndex}`,
+        type: 'bot',
+        content: question.text,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, questionMessage]);
+    }
+  }, [currentQuestionIndex]);
+
   const handleAnswer = (answer: string) => {
     const currentQuestion = questions[currentQuestionIndex];
     const newAnswers = { ...answers, [currentQuestion.id]: answer };
@@ -137,9 +144,10 @@ export default function QuickDiagnosisPage() {
         
         // 少し遅延してから次の質問
         setTimeout(() => {
-          setCurrentQuestionIndex(prev => prev + 1);
-          const nextQuestion = questions[currentQuestionIndex + 1];
-          addMessage(nextQuestion.text, 'bot');
+          const nextIndex = currentQuestionIndex + 1;
+          setCurrentQuestionIndex(nextIndex);
+          // 質問の表示は setCurrentQuestionIndex の更新後に自動的に行われるため、
+          // ここでは質問を手動で追加しない
         }, 1000);
       }, 1500);
     } else {
@@ -161,11 +169,15 @@ export default function QuickDiagnosisPage() {
     // ユーザーの回答内容に応じた適切な相槌
     let aizuchi = '';
     
-    // 回答内容に基づく相槌
-    if (answer.includes('リラックス') || answer.includes('癒し') || answer.includes('落ち着き')) {
+    // 疲労・体調に関する回答
+    if (answer.includes('疲れ') || answer.includes('だる') || answer.includes('しんど')) {
+      aizuchi = 'お疲れ様です。疲れている時こそ、体に優しいお茶がおすすめです。';
+    } else if (answer.includes('リラックス') || answer.includes('癒し') || answer.includes('落ち着き')) {
       aizuchi = 'そうなんですね。リラックスしたい気持ち、よく分かります。';
     } else if (answer.includes('集中') || answer.includes('仕事') || answer.includes('勉強')) {
       aizuchi = 'なるほど！集中したい時ですね。';
+    } else if (answer.includes('元気') || answer.includes('活力') || answer.includes('エネルギ')) {
+      aizuchi = '元気になりたい気持ち、分かります。';
     } else if (answer.includes('健康') || answer.includes('体調') || answer.includes('免疫力')) {
       aizuchi = '健康を意識されているんですね。';
     } else if (answer.includes('美味しい') || answer.includes('楽しみ') || answer.includes('味')) {
@@ -174,13 +186,23 @@ export default function QuickDiagnosisPage() {
       aizuchi = '分かりました。';
     } else if (answer.includes('朝') || answer.includes('昼') || answer.includes('夜')) {
       aizuchi = `${answer}の時間帯ですね。`;
+    } else if (answer.includes('目の疲れ') || answer.includes('眼精疲労')) {
+      aizuchi = '目の疲れ、お辛いですね。目に優しいお茶をご提案します。';
+    } else if (answer.includes('胃') || answer.includes('消化')) {
+      aizuchi = '胃の調子が気になる時は、胃に優しいお茶がおすすめです。';
+    } else if (answer.includes('冷え') || answer.includes('寒')) {
+      aizuchi = '冷え性でお辛いですね。体を温めるお茶をご提案します。';
+    } else if (answer.includes('ストレス') || answer.includes('イライラ')) {
+      aizuchi = 'ストレスを感じている時は、心を落ち着かせるお茶がおすすめです。';
+    } else if (answer.includes('風邪') || answer.includes('体調不良')) {
+      aizuchi = '体調が優れない時は、免疫力をサポートするお茶がおすすめです。';
     } else {
-      // デフォルトの相槌
+      // デフォルトの相槌（より自然な表現に変更）
       const defaultAizuchi = [
         'なるほど！',
         '分かりました！',
-        'ありがとうございます！',
-        'そうなんですね。'
+        'そうなんですね。',
+        '承知いたしました。'
       ];
       aizuchi = defaultAizuchi[Math.floor(Math.random() * defaultAizuchi.length)];
     }
@@ -262,7 +284,7 @@ export default function QuickDiagnosisPage() {
     // 初期メッセージを再表示
     setTimeout(() => {
       const initialMessage: ChatMessage = {
-        id: '1',
+        id: `${Date.now()}-reset-initial`,
         type: 'bot',
         content: 'こんにちは！🍵 あなたにぴったりのお茶を見つけるために、いくつか質問させていただきますね。',
         timestamp: new Date()
