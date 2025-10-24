@@ -59,7 +59,7 @@ export default function KnowledgeAdminPage() {
         const error = await response.json();
         setMessage(`エラー: ${error.error}`);
       }
-    } catch (error) {
+    } catch (_error) {
       setMessage('エラーが発生しました');
     } finally {
       setIsLoading(false);
@@ -134,7 +134,7 @@ export default function KnowledgeAdminPage() {
             <h2 className="text-xl font-semibold mb-4">サンプル知識エントリ</h2>
             
             <div className="space-y-4">
-              {status.sampleEntries.map((entry, index) => (
+              {status.sampleEntries.map((entry, _index) => (
                 <div key={entry.id} className="border rounded-lg p-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>

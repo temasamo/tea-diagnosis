@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
     const allKnowledgeEntries = [];
     
     for (const article of sampleArticles) {
-      const knowledgeEntries = await knowledgeBase.extractKnowledgeFromArticle(article);
-      allKnowledgeEntries.push(...knowledgeEntries);
+      const result = await knowledgeBase.extractKnowledgeFromArticle(article);
+      allKnowledgeEntries.push(...result.entries);
     }
     
     // 知識ベースに追加

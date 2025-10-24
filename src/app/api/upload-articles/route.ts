@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { knowledgeBase, ArticleData } from '@/lib/knowledge-base';
+import { knowledgeBase } from '@/lib/knowledge-base';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,10 +30,11 @@ export async function POST(request: NextRequest) {
         console.log(`Extracted ${result.entries.length} knowledge entries from: ${article.title}`);
       } catch (error) {
         console.error(`Error processing article ${article.title}:`, error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         extractionResults.push({
           title: article.title,
           extractedCount: 0,
-          reason: `処理中にエラーが発生しました: ${error.message}`
+          reason: `処理中にエラーが発生しました: ${errorMessage}`
         });
         // 個別記事のエラーは無視して続行
       }

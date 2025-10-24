@@ -115,14 +115,14 @@ export class SupabaseKnowledgeBaseManager {
       
       // AIで知識を抽出（直接関数呼び出し）
       const { knowledgeBase } = await import('@/lib/knowledge-base');
-      const knowledgeEntries = await knowledgeBase.extractKnowledgeFromArticle(article);
-      console.log('AI extraction result:', knowledgeEntries);
+      const result = await knowledgeBase.extractKnowledgeFromArticle(article);
+      console.log('AI extraction result:', result);
       
-      if (knowledgeEntries && knowledgeEntries.length > 0) {
+      if (result.entries && result.entries.length > 0) {
         // 知識エントリを保存
-        await this.saveKnowledgeEntries(knowledgeEntries);
-        console.log(`Saved ${knowledgeEntries.length} knowledge entries`);
-        return knowledgeEntries;
+        await this.saveKnowledgeEntries(result.entries);
+        console.log(`Saved ${result.entries.length} knowledge entries`);
+        return result.entries;
       }
 
       console.log('No knowledge entries extracted');

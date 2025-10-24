@@ -110,10 +110,10 @@ export default function UploadPage() {
         let message = `学習完了: ${data.articlesCount}記事から${data.knowledgeEntriesCount}件の知識を抽出`;
         
         if (data.extractionResults) {
-          const failedArticles = data.extractionResults.filter((result: any) => result.extractedCount === 0);
+          const failedArticles = data.extractionResults.filter((result: { extractedCount: number }) => result.extractedCount === 0);
           if (failedArticles.length > 0) {
             message += '\n\n【抽出できなかった記事】';
-            failedArticles.forEach((result: any) => {
+            failedArticles.forEach((result: { title: string; reason?: string }) => {
               message += `\n・${result.title}: ${result.reason || '理由不明'}`;
             });
           }
@@ -126,7 +126,7 @@ export default function UploadPage() {
         const error = await response.json();
         setMessage(`エラー: ${error.error}`);
       }
-    } catch (error) {
+    } catch (_error) {
       setMessage('エラーが発生しました');
     } finally {
       setIsLoading(false);

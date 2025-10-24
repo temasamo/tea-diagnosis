@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseKnowledgeBase } from '@/lib/supabase-knowledge-base';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // 記事一覧を取得
     const articles = await supabaseKnowledgeBase.getAllArticles();
