@@ -159,7 +159,7 @@ export class SupabaseKnowledgeBaseManager {
   }
 
   // 全ての記事を取得
-  async getAllArticles(): Promise<any[]> {
+  async getAllArticles(): Promise<ArticleData[]> {
     const { data, error } = await supabase
       .from('articles')
       .select('*')
@@ -174,7 +174,7 @@ export class SupabaseKnowledgeBaseManager {
   }
 
   // IDで記事を取得
-  async getArticleById(id: string): Promise<any | null> {
+  async getArticleById(id: string): Promise<ArticleData | null> {
     const { data, error } = await supabase
       .from('articles')
       .select('*')
@@ -190,7 +190,7 @@ export class SupabaseKnowledgeBaseManager {
   }
 
   // ソース（記事タイトル）で知識を取得
-  async getKnowledgeBySource(source: string): Promise<any[]> {
+  async getKnowledgeBySource(source: string): Promise<KnowledgeEntry[]> {
     const { data, error } = await supabase
       .from('knowledge_entries')
       .select('*')

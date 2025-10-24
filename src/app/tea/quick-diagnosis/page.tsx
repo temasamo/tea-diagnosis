@@ -165,7 +165,7 @@ export default function QuickDiagnosisPage() {
   };
 
   // 相槌を生成する関数
-  const getAizuchi = (answer: string, questionIndex: number): string => {
+  const getAizuchi = (answer: string, _questionIndex: number): string => {
     // ユーザーの回答内容に応じた適切な相槌
     let aizuchi = '';
     
@@ -221,7 +221,7 @@ export default function QuickDiagnosisPage() {
   };
 
   // 最後の相槌を生成する関数
-  const getFinalAizuchi = (answer: string): string => {
+  const getFinalAizuchi = (_answer: string): string => {
     const finalAizuchiOptions = [
       'ありがとうございます！',
       '分かりました！',

@@ -72,7 +72,7 @@ export default function DiagnosisPage() {
   
   const lastUserTextRef = useRef("");
   const askedFollowupsRef = useRef<string[]>([]);
-  const processingRef = useRef(false);
+  // const processingRef = useRef(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   // 新規/更新メッセージ・タイピングインジケータのたびに最下部へ
