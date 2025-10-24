@@ -157,6 +157,53 @@ export class SupabaseKnowledgeBaseManager {
       lastUpdate: lastUpdateResult.data?.created_at || null,
     };
   }
+
+  // 全ての記事を取得
+  async getAllArticles(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching articles:', error);
+      throw error;
+    }
+
+    return data || [];
+  }
+
+  // IDで記事を取得
+  async getArticleById(id: string): Promise<any | null> {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching article by ID:', error);
+      return null;
+    }
+
+    return data;
+  }
+
+  // ソース（記事タイトル）で知識を取得
+  async getKnowledgeBySource(source: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('knowledge_entries')
+      .select('*')
+      .eq('source', source)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching knowledge by source:', error);
+      throw error;
+    }
+
+    return data || [];
+  }
 }
 
 export const supabaseKnowledgeBase = new SupabaseKnowledgeBaseManager();

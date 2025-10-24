@@ -14,16 +14,27 @@ export async function POST(request: NextRequest) {
 
     // 各記事から知識を抽出
     const allKnowledgeEntries = [];
+    const extractionResults = [];
     
     for (const article of articles) {
       console.log(`Processing article: ${article.title}`);
       
       try {
-        const knowledgeEntries = await knowledgeBase.extractKnowledgeFromArticle(article);
-        allKnowledgeEntries.push(...knowledgeEntries);
-        console.log(`Extracted ${knowledgeEntries.length} knowledge entries from: ${article.title}`);
+        const result = await knowledgeBase.extractKnowledgeFromArticle(article);
+        allKnowledgeEntries.push(...result.entries);
+        extractionResults.push({
+          title: article.title,
+          extractedCount: result.entries.length,
+          reason: result.reason
+        });
+        console.log(`Extracted ${result.entries.length} knowledge entries from: ${article.title}`);
       } catch (error) {
         console.error(`Error processing article ${article.title}:`, error);
+        extractionResults.push({
+          title: article.title,
+          extractedCount: 0,
+          reason: `処理中にエラーが発生しました: ${error.message}`
+        });
         // 個別記事のエラーは無視して続行
       }
     }
@@ -36,7 +47,8 @@ export async function POST(request: NextRequest) {
       articlesCount: articles.length,
       knowledgeEntriesCount: allKnowledgeEntries.length,
       lastUpdate: knowledgeBase.getLastUpdate()?.toISOString(),
-      sampleEntries: allKnowledgeEntries.slice(0, 5) // 最初の5件をサンプルとして返す
+      sampleEntries: allKnowledgeEntries.slice(0, 5), // 最初の5件をサンプルとして返す
+      extractionResults: extractionResults // 各記事の抽出結果と理由
     });
     
   } catch (error) {

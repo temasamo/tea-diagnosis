@@ -23,18 +23,33 @@ class KnowledgeBaseManager {
   private lastUpdate: Date | null = null;
 
   // 記事から知識を抽出（AI活用版）
-  async extractKnowledgeFromArticle(article: ArticleData): Promise<KnowledgeEntry[]> {
+  async extractKnowledgeFromArticle(article: ArticleData): Promise<{entries: KnowledgeEntry[], reason?: string}> {
     const entries: KnowledgeEntry[] = [];
+    let reason = '';
     
     try {
       // AIを使用して記事から知識を抽出
       const aiExtractedKnowledge = await this.extractKnowledgeWithAI(article);
       entries.push(...aiExtractedKnowledge);
+      
+      if (entries.length === 0) {
+        reason = 'AIが記事からお茶の提案に活用できる知識を見つけられませんでした。記事の内容が一般的すぎるか、お茶に関する具体的な情報が不足している可能性があります。';
+      }
     } catch (error) {
       console.error('AI extraction failed, falling back to rule-based:', error);
+      reason = 'AI処理に失敗したため、ルールベース抽出を試行しました。';
+      
       // フォールバック: ルールベース抽出
       const conditions = this.extractConditions(article.content);
       const recommendations = this.extractRecommendations(article.content);
+      
+      if (conditions.length === 0) {
+        reason += ' 記事から具体的な症状や状況を特定できませんでした。';
+      }
+      
+      if (recommendations.length === 0) {
+        reason += ' 記事からお茶の提案に活用できる情報を抽出できませんでした。';
+      }
       
       for (const condition of conditions) {
         for (const recommendation of recommendations) {
@@ -50,9 +65,13 @@ class KnowledgeBaseManager {
           });
         }
       }
+      
+      if (entries.length === 0) {
+        reason += ' ルールベース抽出でも知識を抽出できませんでした。記事の内容をより具体的にお茶の効果や症状に言及するよう改善してください。';
+      }
     }
     
-    return entries;
+    return { entries, reason: entries.length === 0 ? reason : undefined };
   }
 
   // AIを使用して記事から知識を抽出

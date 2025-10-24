@@ -60,7 +60,15 @@ export default function UploadPage() {
 
   const updateArticle = (index: number, field: keyof ArticleData, value: string | string[]) => {
     const updatedArticles = [...articles];
-    updatedArticles[index] = { ...updatedArticles[index], [field]: value };
+    if (field === 'tags' && typeof value === 'string') {
+      // タグの場合は文字列を配列に変換
+      updatedArticles[index] = { 
+        ...updatedArticles[index], 
+        [field]: value.split(',').map(tag => tag.trim()).filter(tag => tag) 
+      };
+    } else {
+      updatedArticles[index] = { ...updatedArticles[index], [field]: value };
+    }
     setArticles(updatedArticles);
   };
 
@@ -97,7 +105,21 @@ export default function UploadPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setMessage(`学習完了: ${data.articlesCount}記事から${data.knowledgeEntriesCount}件の知識を抽出`);
+        
+        // 詳細な抽出結果を表示
+        let message = `学習完了: ${data.articlesCount}記事から${data.knowledgeEntriesCount}件の知識を抽出`;
+        
+        if (data.extractionResults) {
+          const failedArticles = data.extractionResults.filter((result: any) => result.extractedCount === 0);
+          if (failedArticles.length > 0) {
+            message += '\n\n【抽出できなかった記事】';
+            failedArticles.forEach((result: any) => {
+              message += `\n・${result.title}: ${result.reason || '理由不明'}`;
+            });
+          }
+        }
+        
+        setMessage(message);
         setArticles([]); // アップロード後はクリア
         fetchStatus(); // ステータスを更新
       } else {
@@ -150,7 +172,7 @@ export default function UploadPage() {
         {/* 記事入力フォーム */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">記事原稿</h2>
+            <h2 className="text-xl font-semibold text-gray-900">記事原稿</h2>
             <button
               onClick={addArticle}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
@@ -168,7 +190,7 @@ export default function UploadPage() {
           {articles.map((article, index) => (
             <div key={index} className="border rounded-lg p-4 mb-4">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold">記事 {index + 1}</h3>
+                <h3 className="font-semibold text-gray-900">記事 {index + 1}</h3>
                 <button
                   onClick={() => removeArticle(index)}
                   className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
@@ -186,7 +208,7 @@ export default function UploadPage() {
                     type="text"
                     value={article.title}
                     onChange={(e) => updateArticle(index, 'title', e.target.value)}
-                    className="w-full p-2 border rounded-lg"
+                    className="w-full p-2 border rounded-lg placeholder-gray-600 text-gray-900"
                     placeholder="記事のタイトル"
                   />
                 </div>
@@ -198,7 +220,7 @@ export default function UploadPage() {
                   <select
                     value={article.category}
                     onChange={(e) => updateArticle(index, 'category', e.target.value)}
-                    className="w-full p-2 border rounded-lg"
+                    className="w-full p-2 border rounded-lg text-gray-900"
                   >
                     <option value="health">健康</option>
                     <option value="lifestyle">ライフスタイル</option>
@@ -214,8 +236,8 @@ export default function UploadPage() {
                   <input
                     type="text"
                     value={article.tags.join(', ')}
-                    onChange={(e) => updateArticle(index, 'tags', e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag))}
-                    className="w-full p-2 border rounded-lg"
+                    onChange={(e) => updateArticle(index, 'tags', e.target.value)}
+                    className="w-full p-2 border rounded-lg placeholder-gray-600 text-gray-900"
                     placeholder="疲労回復, 免疫力, 緑茶"
                   />
                 </div>
@@ -228,7 +250,7 @@ export default function UploadPage() {
                     type="date"
                     value={article.publishDate}
                     onChange={(e) => updateArticle(index, 'publishDate', e.target.value)}
-                    className="w-full p-2 border rounded-lg"
+                    className="w-full p-2 border rounded-lg text-gray-900"
                   />
                 </div>
               </div>
@@ -240,7 +262,7 @@ export default function UploadPage() {
                 <textarea
                   value={article.content}
                   onChange={(e) => updateArticle(index, 'content', e.target.value)}
-                  className="w-full p-2 border rounded-lg h-32"
+                  className="w-full p-2 border rounded-lg h-32 placeholder-gray-600 text-gray-900"
                   placeholder="記事の本文を入力してください..."
                 />
               </div>
@@ -279,11 +301,11 @@ export default function UploadPage() {
 
         {/* サンプル記事 */}
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">サンプル記事（コピーして使用）</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-900">サンプル記事（コピーして使用）</h2>
           
           <div className="space-y-4">
             <div className="border rounded-lg p-4">
-              <h3 className="font-semibold mb-2">疲労回復のお茶</h3>
+              <h3 className="font-semibold mb-2 text-gray-900">疲労回復のお茶</h3>
               <div className="text-sm text-gray-600 space-y-2">
                 <p><strong>タイトル:</strong> 疲れた時に飲むお茶と、相性の良い素材・食べ物</p>
                 <p><strong>内容:</strong> 疲労を感じたときにおすすめの日本茶やハーブとのブレンド素材、はちみつなどの甘味、さらには一緒に食べると良い食品まで紹介。日常に取り入れやすい癒しのティータイムをご提案します。緑茶にレモンとハチミツを加えることで、疲労回復効果が期待できます。</p>
@@ -292,7 +314,7 @@ export default function UploadPage() {
             </div>
 
             <div className="border rounded-lg p-4">
-              <h3 className="font-semibold mb-2">免疫力向上のお茶</h3>
+              <h3 className="font-semibold mb-2 text-gray-900">免疫力向上のお茶</h3>
               <div className="text-sm text-gray-600 space-y-2">
                 <p><strong>タイトル:</strong> 季節の変わり目にぴったり！免疫力を高める日本茶ブレンド</p>
                 <p><strong>内容:</strong> 風邪をひきやすい季節の変わり目におすすめの、免疫力をサポートする日本茶ブレンドをご紹介します。エキナセアや柚子、緑茶などの素材の特徴と効果的な飲み方も解説。エキナセアと柚子を緑茶にブレンドすることで、免疫力向上が期待できます。</p>
