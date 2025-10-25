@@ -248,18 +248,20 @@ export default function QuickDiagnosisPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setRecommendation(data.recommendation);
-        addMessage('診断が完了しました！あなたにおすすめのお茶をご提案します。', 'bot');
-        addMessage(`🍵 お茶: ${data.recommendation.tea}`, 'bot');
-        addMessage(`🍯 甘味料: ${data.recommendation.sweetener}`, 'bot');
-        addMessage(`🍪 お茶菓子: ${data.recommendation.snack}`, 'bot');
-        addMessage(`💡 ${data.recommendation.reason}`, 'bot');
+        
+        // RAG連携の結果を表示
+        addMessage('診断が完了しました！AIがあなたにぴったりのお茶をご提案します。', 'bot');
+        
+        // AI推奨を自然文で表示
+        setTimeout(() => {
+          addMessage(`🤖 AI推奨: ${data.aiRecommendation}`, 'bot');
+        }, 1000);
         
         // ショップ確認メッセージを追加
         setTimeout(() => {
           addMessage('このご提案がお気に召したら、ご希望のネットショップへお繋げすることができます。いかがしますか？', 'bot');
           setShowShopOptions(true);
-        }, 2000);
+        }, 3000);
       } else {
         throw new Error('診断に失敗しました');
       }

@@ -1,36 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { supabaseKnowledgeBase } from '@/lib/supabase-knowledge-base';
+import { createClient } from "@supabase/supabase-js";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 export async function POST(request: NextRequest) {
   try {
     const { answers } = await request.json();
 
-      // Supabaseから関連する提案を取得
-      const relevantKnowledge = await supabaseKnowledgeBase.getRelevantKnowledge(answers);
+    // ユーザーの回答を文字列に変換
+    const userCondition = Object.values(answers).join(' ');
+
+    // 1️⃣ ユーザー入力をベクトル化
+    const embedding = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: userCondition,
+    });
+
+    // 2️⃣ 類似記事を検索（RPC）
+    const { data: matches } = await supabase.rpc("match_tea_articles", {
+      query_embedding: embedding.data[0].embedding,
+      match_threshold: 0.75,
+      match_count: 3,
+    });
     
     const prompt = `
-あなたは茶ソムリエです。以下のユーザーの回答とHealTeaの知識ベースを基に、最適なお茶・甘味料・お茶菓子を提案してください。
+あなたは茶ソムリエです。以下のユーザーの回答と参考記事を基に、最適なお茶を自然な文章で提案してください。
 
 ユーザーの回答:
 ${JSON.stringify(answers, null, 2)}
 
-関連する知識ベース:
-${relevantKnowledge}
+参考記事:
+${matches?.map((m: any) => `- ${m.title}: ${m.content.slice(0, 200)}...`).join("\n")}
 
-以下の形式で回答してください:
-{
-  "tea": "具体的なお茶の種類とブレンド",
-  "sweetener": "おすすめの甘味料",
-  "snack": "おすすめのお茶菓子",
-  "reason": "なぜこの組み合わせが良いかの理由（2-3文）"
-}
+以下の点を含めて自然な文章で回答してください：
+- おすすめのお茶の種類とブレンド
+- 甘味料の提案
+- お茶菓子の提案
+- なぜこの組み合わせが良いかの理由
 
-回答は日本語で、実用的で具体的な提案をしてください。
+回答は日本語で、実用的で具体的な提案を自然な文章形式で行ってください。
 `;
 
     const completion = await openai.chat.completions.create({
@@ -50,20 +66,11 @@ ${relevantKnowledge}
 
     const responseText = completion.choices[0]?.message?.content || '';
     
-    try {
-      const recommendation = JSON.parse(responseText);
-      return NextResponse.json({ recommendation });
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      // フォールバック提案
-      const fallbackRecommendation = {
-        tea: "緑茶 + はちみつ + レモン",
-        sweetener: "はちみつ",
-        snack: "和菓子（ようかん）",
-        reason: "疲労回復とリラックス効果が期待できる組み合わせです。"
-      };
-      return NextResponse.json({ recommendation: fallbackRecommendation });
-    }
+    return NextResponse.json({ 
+      aiRecommendation: responseText,
+      condition: userCondition,
+      matches: matches?.length || 0
+    });
 
   } catch (error) {
     console.error('Error in quick-diagnosis API:', error);
