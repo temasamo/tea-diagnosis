@@ -258,14 +258,36 @@ export default function QuickDiagnosisPage() {
         setAiResult(data.aiRecommendation);
         setRelatedArticles(data.articles || []);
         
-        // モール連携用の推奨データを設定（フォールバック）
-        const fallbackRecommendation = {
-          tea: "おすすめのお茶",
-          sweetener: "はちみつ",
-          snack: "和菓子",
+        // AI推奨から商品名を抽出してrecommendationを設定
+        const aiText = data.aiRecommendation.toLowerCase();
+        let teaName = "おすすめのお茶";
+        let sweetenerName = "はちみつ";
+        let snackName = "和菓子";
+        
+        // お茶の種類を抽出
+        if (aiText.includes('緑茶')) teaName = "緑茶";
+        else if (aiText.includes('紅茶')) teaName = "紅茶";
+        else if (aiText.includes('ハーブ')) teaName = "ハーブティー";
+        else if (aiText.includes('ほうじ茶')) teaName = "ほうじ茶";
+        else if (aiText.includes('抹茶')) teaName = "抹茶";
+        
+        // 甘味料を抽出
+        if (aiText.includes('はちみつ')) sweetenerName = "はちみつ";
+        else if (aiText.includes('砂糖')) sweetenerName = "砂糖";
+        else if (aiText.includes('黒糖')) sweetenerName = "黒糖";
+        
+        // お茶菓子を抽出
+        if (aiText.includes('和菓子')) snackName = "和菓子";
+        else if (aiText.includes('洋菓子')) snackName = "洋菓子";
+        else if (aiText.includes('クッキー')) snackName = "クッキー";
+        
+        const recommendation = {
+          tea: teaName,
+          sweetener: sweetenerName,
+          snack: snackName,
           reason: data.aiRecommendation
         };
-        setRecommendation(fallbackRecommendation);
+        setRecommendation(recommendation);
         
         // AI推奨を自然文で表示
         setTimeout(() => {
@@ -285,11 +307,19 @@ export default function QuickDiagnosisPage() {
         // 診断完了フラグを設定
         setIsComplete(true);
         
+        // 具体的な商品提案を表示
+        setTimeout(() => {
+          addMessage('🛒 おすすめ商品：', 'bot');
+          addMessage(`・お茶: ${teaName}`, 'bot');
+          addMessage(`・甘味料: ${sweetenerName}`, 'bot');
+          addMessage(`・お茶菓子: ${snackName}`, 'bot');
+        }, 2000);
+        
         // ショップ確認メッセージを追加
         setTimeout(() => {
-          addMessage('このご提案がお気に召したら、ご希望のネットショップへお繋げすることができます。いかがしますか？', 'bot');
+          addMessage('これらの商品を購入したい場合は、ご希望のネットショップへお繋げすることができます。いかがしますか？', 'bot');
           setShowShopOptions(true);
-        }, 3000);
+        }, 4000);
       } else {
         throw new Error('診断に失敗しました');
       }
