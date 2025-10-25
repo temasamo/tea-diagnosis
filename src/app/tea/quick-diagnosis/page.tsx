@@ -264,25 +264,31 @@ export default function QuickDiagnosisPage() {
         let sweetenerName = "はちみつ";
         let snackName = "和菓子";
         
-        // お茶の種類を抽出
-        if (aiText.includes('緑茶')) teaName = "緑茶";
-        else if (aiText.includes('紅茶')) teaName = "紅茶";
-        else if (aiText.includes('ハーブ')) teaName = "ハーブティー";
+        // お茶の種類を抽出（より具体的な商品名を優先）
+        if (aiText.includes('カモミール')) teaName = "カモミールティー";
+        else if (aiText.includes('ペパーミント')) teaName = "ペパーミントティー";
+        else if (aiText.includes('ローズヒップ')) teaName = "ローズヒップティー";
+        else if (aiText.includes('ジャスミン')) teaName = "ジャスミンティー";
+        else if (aiText.includes('ゴーヤ茶')) teaName = "ゴーヤ茶";
         else if (aiText.includes('ほうじ茶')) teaName = "ほうじ茶";
         else if (aiText.includes('抹茶')) teaName = "抹茶";
-        else if (aiText.includes('ゴーヤ茶')) teaName = "ゴーヤ茶";
+        else if (aiText.includes('緑茶')) teaName = "緑茶";
+        else if (aiText.includes('紅茶')) teaName = "紅茶";
+        else if (aiText.includes('ハーブ')) teaName = "ハーブティー";
         
-        // 甘味料を抽出
+        // 甘味料を抽出（より具体的な商品名を優先）
         if (aiText.includes('はちみつ')) sweetenerName = "はちみつ";
-        else if (aiText.includes('砂糖')) sweetenerName = "砂糖";
-        else if (aiText.includes('黒糖')) sweetenerName = "黒糖";
+        else if (aiText.includes('ハチミツ')) sweetenerName = "はちみつ";
         else if (aiText.includes('和三盆')) sweetenerName = "和三盆糖";
+        else if (aiText.includes('黒糖')) sweetenerName = "黒糖";
+        else if (aiText.includes('砂糖')) sweetenerName = "砂糖";
         
-        // お茶菓子を抽出
-        if (aiText.includes('和菓子')) snackName = "和菓子";
+        // お茶菓子を抽出（より具体的な商品名を優先）
+        if (aiText.includes('どら焼き')) snackName = "どら焼き";
+        else if (aiText.includes('和三盆のどら焼き')) snackName = "和三盆のどら焼き";
+        else if (aiText.includes('和菓子')) snackName = "和菓子";
         else if (aiText.includes('洋菓子')) snackName = "洋菓子";
         else if (aiText.includes('クッキー')) snackName = "クッキー";
-        else if (aiText.includes('どら焼き')) snackName = "どら焼き";
         
         const recommendation = {
           tea: teaName,
