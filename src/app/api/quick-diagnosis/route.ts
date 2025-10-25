@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 ${JSON.stringify(answers, null, 2)}
 
 参考記事:
-${matches?.map((m: any) => `- ${m.title}: ${m.content.slice(0, 200)}...`).join("\n")}
+${matches?.map((m: { title: string; content: string }) => `- ${m.title}: ${m.content.slice(0, 200)}...`).join("\n")}
 
 以下の点を含めて自然な文章で回答してください：
 - おすすめのお茶の種類とブレンド

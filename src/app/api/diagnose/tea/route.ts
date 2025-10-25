@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 健康状態: ${condition}
 
 参考記事:
-${matches?.map((m: any) => `- ${m.title}: ${m.content.slice(0, 100)}...`).join("\n")}
+${matches?.map((m: { title: string; content: string }) => `- ${m.title}: ${m.content.slice(0, 100)}...`).join("\n")}
 `;
 
   const response = await openai.chat.completions.create({
