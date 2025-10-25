@@ -270,16 +270,19 @@ export default function QuickDiagnosisPage() {
         else if (aiText.includes('ハーブ')) teaName = "ハーブティー";
         else if (aiText.includes('ほうじ茶')) teaName = "ほうじ茶";
         else if (aiText.includes('抹茶')) teaName = "抹茶";
+        else if (aiText.includes('ゴーヤ茶')) teaName = "ゴーヤ茶";
         
         // 甘味料を抽出
         if (aiText.includes('はちみつ')) sweetenerName = "はちみつ";
         else if (aiText.includes('砂糖')) sweetenerName = "砂糖";
         else if (aiText.includes('黒糖')) sweetenerName = "黒糖";
+        else if (aiText.includes('和三盆')) sweetenerName = "和三盆糖";
         
         // お茶菓子を抽出
         if (aiText.includes('和菓子')) snackName = "和菓子";
         else if (aiText.includes('洋菓子')) snackName = "洋菓子";
         else if (aiText.includes('クッキー')) snackName = "クッキー";
+        else if (aiText.includes('どら焼き')) snackName = "どら焼き";
         
         const recommendation = {
           tea: teaName,
