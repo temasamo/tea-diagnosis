@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
   try {

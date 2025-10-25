@@ -307,7 +307,7 @@ export default function QuickDiagnosisPage() {
         if (data.articles && data.articles.length > 0) {
           setTimeout(() => {
             addMessage('📚 関連記事もご覧ください：', 'bot');
-            data.articles.forEach((article: any) => {
+            data.articles.forEach((article: { title: string }) => {
               addMessage(`・${article.title}`, 'bot');
             });
           }, 2000);
@@ -405,7 +405,7 @@ export default function QuickDiagnosisPage() {
     generateLinksWithRecommendation(shop, recommendation);
   };
 
-  const generateLinksWithRecommendation = (shop: string, rec: any) => {
+  const generateLinksWithRecommendation = (shop: string, rec: { tea: string; sweetener: string; snack: string }) => {
     const searchKeywords = {
       tea: rec.tea,
       sweetener: rec.sweetener,
