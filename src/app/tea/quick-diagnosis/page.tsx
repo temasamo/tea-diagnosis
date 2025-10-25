@@ -258,6 +258,15 @@ export default function QuickDiagnosisPage() {
         setAiResult(data.aiRecommendation);
         setRelatedArticles(data.articles || []);
         
+        // モール連携用の推奨データを設定（フォールバック）
+        const fallbackRecommendation = {
+          tea: "おすすめのお茶",
+          sweetener: "はちみつ",
+          snack: "和菓子",
+          reason: data.aiRecommendation
+        };
+        setRecommendation(fallbackRecommendation);
+        
         // AI推奨を自然文で表示
         setTimeout(() => {
           addMessage(`🤖 AI推奨: ${data.aiRecommendation}`, 'bot');
