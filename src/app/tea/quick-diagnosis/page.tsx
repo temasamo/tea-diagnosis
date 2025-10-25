@@ -272,6 +272,19 @@ export default function QuickDiagnosisPage() {
           addMessage(`🤖 AI推奨: ${data.aiRecommendation}`, 'bot');
         }, 1000);
         
+        // 関連記事がある場合は表示
+        if (data.articles && data.articles.length > 0) {
+          setTimeout(() => {
+            addMessage('📚 関連記事もご覧ください：', 'bot');
+            data.articles.forEach((article: any) => {
+              addMessage(`・${article.title}`, 'bot');
+            });
+          }, 2000);
+        }
+        
+        // 診断完了フラグを設定
+        setIsComplete(true);
+        
         // ショップ確認メッセージを追加
         setTimeout(() => {
           addMessage('このご提案がお気に召したら、ご希望のネットショップへお繋げすることができます。いかがしますか？', 'bot');
