@@ -381,12 +381,29 @@ export default function QuickDiagnosisPage() {
 
   // アフィリエイトリンク生成
   const generateAffiliateLinks = (shop: string) => {
-    if (!recommendation) return;
+    console.log('generateAffiliateLinks called with shop:', shop);
+    console.log('recommendation:', recommendation);
+    
+    if (!recommendation) {
+      console.log('No recommendation available, using fallback');
+      // フォールバック用の推奨データ
+      const fallbackRecommendation = {
+        tea: "おすすめのお茶",
+        sweetener: "はちみつ",
+        snack: "和菓子"
+      };
+      generateLinksWithRecommendation(shop, fallbackRecommendation);
+      return;
+    }
+    
+    generateLinksWithRecommendation(shop, recommendation);
+  };
 
+  const generateLinksWithRecommendation = (shop: string, rec: any) => {
     const searchKeywords = {
-      tea: recommendation.tea,
-      sweetener: recommendation.sweetener,
-      snack: recommendation.snack
+      tea: rec.tea,
+      sweetener: rec.sweetener,
+      snack: rec.snack
     };
 
     let links: { name: string; url: string }[] = [];
