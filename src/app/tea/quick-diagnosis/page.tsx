@@ -237,9 +237,11 @@ export default function QuickDiagnosisPage() {
   };
 
   const generateRecommendation = async (userAnswers: Record<string, string>) => {
+    console.log('🚀 generateRecommendation開始:', { answersCount: Object.keys(userAnswers).length });
     setIsLoading(true);
     
     try {
+      console.log('📡 API呼び出し開始: /api/quick-diagnosis');
       const response = await fetch('/api/quick-diagnosis', {
         method: 'POST',
         headers: {
@@ -248,8 +250,15 @@ export default function QuickDiagnosisPage() {
         body: JSON.stringify({ answers: userAnswers }),
       });
 
+      console.log('📥 APIレスポンス受信:', { 
+        ok: response.ok, 
+        status: response.status, 
+        statusText: response.statusText 
+      });
+
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ APIレスポンス成功:', data);
         
         // デバッグ情報をコンソールに出力（常に表示）
         console.log('🔍 クイック診断APIレスポンス:', {

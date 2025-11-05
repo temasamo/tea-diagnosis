@@ -12,17 +12,22 @@ const supabase = createClient(
 );
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 /api/quick-diagnosis リクエスト受信');
   try {
     const { answers } = await request.json();
+    console.log('📝 ユーザー回答受信:', { answersCount: Object.keys(answers).length });
 
     // ユーザーの回答を文字列に変換
     const userCondition = Object.values(answers).join(' ');
+    console.log('📄 ユーザー条件:', userCondition);
 
     // 1️⃣ ユーザー入力をベクトル化
+    console.log('🔢 Embedding生成開始...');
     const embedding = await openai.embeddings.create({
       model: "text-embedding-3-small",
       input: userCondition,
     });
+    console.log('✅ Embedding生成完了:', { dimension: embedding.data[0].embedding.length });
 
     // 2️⃣ 類似記事を検索（RPC）
     let matches: Array<{ id: string; title: string; content: string }> = [];
@@ -152,12 +157,28 @@ ${matches.length > 0
       rpcUsed: !searchError || searchError.includes('Fallback'), // RPCが使われたかどうか
     };
     
+    console.log('📤 レスポンス送信:', {
+      matches: responseData.matches,
+      articlesCount: responseData.articles?.length || 0,
+      hasDebug: !!responseData.debug,
+      searchError: responseData.debug.searchError
+    });
+    
     return NextResponse.json(responseData);
 
   } catch (error) {
-    console.error('Error in quick-diagnosis API:', error);
+    console.error('❌ /api/quick-diagnosis エラー:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      error
+    });
     return NextResponse.json(
-      { error: '診断中にエラーが発生しました' },
+      { 
+        error: '診断中にエラーが発生しました',
+        debug: {
+          errorMessage: error instanceof Error ? error.message : 'Unknown error'
+        }
+      },
       { status: 500 }
     );
   }
