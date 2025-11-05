@@ -25,11 +25,59 @@ export async function POST(request: NextRequest) {
     });
 
     // 2️⃣ 類似記事を検索（RPC）
-    const { data: matches } = await supabase.rpc("match_tea_articles", {
-      query_embedding: embedding.data[0].embedding,
-      match_threshold: 0.75,
-      match_count: 3,
-    });
+    let matches: Array<{ id: string; title: string; content: string }> = [];
+    let searchError: string | null = null;
+    
+    try {
+      const { data, error } = await supabase.rpc("match_tea_articles", {
+        query_embedding: embedding.data[0].embedding,
+        match_threshold: 0.75,
+        match_count: 3,
+      });
+      
+      if (error) {
+        console.error('RPC error:', error);
+        searchError = `RPC error: ${error.message}`;
+        // フォールバック: tea_articlesテーブルから直接取得を試行
+        try {
+          const { data: allArticles, error: tableError } = await supabase
+            .from('tea_articles')
+            .select('id, title, content')
+            .limit(3);
+          
+          if (tableError) {
+            console.error('Table query error:', tableError);
+            searchError = `Table error: ${tableError.message}`;
+          } else {
+            matches = allArticles || [];
+            console.log(`Fallback: Found ${matches.length} articles from tea_articles table`);
+          }
+        } catch (fallbackError) {
+          console.error('Fallback failed:', fallbackError);
+          searchError = `Fallback failed: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`;
+        }
+      } else {
+        matches = data || [];
+        console.log(`RAG search successful: Found ${matches.length} articles`);
+      }
+    } catch (rpcError) {
+      console.error('RPC call failed:', rpcError);
+      searchError = `RPC call failed: ${rpcError instanceof Error ? rpcError.message : 'Unknown error'}`;
+      // フォールバックを試行
+      try {
+        const { data: allArticles, error: tableError } = await supabase
+          .from('tea_articles')
+          .select('id, title, content')
+          .limit(3);
+        
+        if (!tableError && allArticles) {
+          matches = allArticles;
+          console.log(`Fallback: Found ${matches.length} articles from tea_articles table`);
+        }
+      } catch (_fallbackError) {
+        // フォールバックも失敗した場合は空配列のまま
+      }
+    }
     
     const prompt = `
 あなたは茶ソムリエです。以下のユーザーの回答と参考記事を基に、最適なお茶を自然な文章で提案してください。
@@ -38,7 +86,9 @@ export async function POST(request: NextRequest) {
 ${JSON.stringify(answers, null, 2)}
 
 参考記事:
-${matches?.map((m: { title: string; content: string }) => `- ${m.title}: ${m.content.slice(0, 200)}...`).join("\n")}
+${matches.length > 0 
+  ? matches.map((m: { title: string; content: string }) => `- ${m.title}: ${m.content.slice(0, 200)}...`).join("\n")
+  : "（関連記事が見つかりませんでした）"}
 
 以下の点を含めて自然な文章で回答してください：
 - おすすめのお茶の種類とブレンド
@@ -66,11 +116,36 @@ ${matches?.map((m: { title: string; content: string }) => `- ${m.title}: ${m.con
 
     const responseText = completion.choices[0]?.message?.content || '';
     
-    return NextResponse.json({ 
+    // レスポンスにエラー情報を含める（開発環境でのデバッグ用）
+    const responseData: {
+      aiRecommendation: string;
+      condition: string;
+      matches: number;
+      articles?: Array<{ id: string; title: string; excerpt: string }>;
+      debug?: {
+        searchError?: string | null;
+        hasArticles: boolean;
+      };
+    } = {
       aiRecommendation: responseText,
       condition: userCondition,
-      matches: matches?.length || 0
-    });
+      matches: matches.length,
+      articles: matches.map((m: { id: string; title: string; content: string }) => ({
+        id: m.id,
+        title: m.title,
+        excerpt: m.content.slice(0, 100) + "...",
+      })),
+    };
+    
+    // 開発環境またはエラーがある場合のみデバッグ情報を追加
+    if (process.env.NODE_ENV === 'development' || searchError) {
+      responseData.debug = {
+        searchError: searchError || null,
+        hasArticles: matches.length > 0,
+      };
+    }
+    
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error('Error in quick-diagnosis API:', error);

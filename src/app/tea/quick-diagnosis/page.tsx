@@ -251,6 +251,20 @@ export default function QuickDiagnosisPage() {
       if (response.ok) {
         const data = await response.json();
         
+        // デバッグ情報をコンソールに出力（デバッグ情報がある場合）
+        if (data.debug) {
+          console.log('🔍 RAG検索デバッグ情報:', {
+            matches: data.matches,
+            hasArticles: data.debug.hasArticles,
+            searchError: data.debug.searchError,
+            articlesCount: data.articles?.length || 0
+          });
+          
+          if (data.debug.searchError) {
+            console.warn('⚠️ RAG検索でエラーが発生しました:', data.debug.searchError);
+          }
+        }
+        
         // RAG連携の結果を表示
         addMessage('診断が完了しました！AIがあなたにぴったりのお茶をご提案します。', 'bot');
         
