@@ -138,6 +138,7 @@ ${matches.length > 0
       debug?: {
         searchError?: string | null;
         hasArticles: boolean;
+        rpcUsed?: boolean;
       };
     } = {
       aiRecommendation: responseText,
