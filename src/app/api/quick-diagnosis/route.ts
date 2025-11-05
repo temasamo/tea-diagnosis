@@ -36,8 +36,13 @@ export async function POST(request: NextRequest) {
       });
       
       if (error) {
-        console.error('RPC error:', error);
-        searchError = `RPC error: ${error.message}`;
+        console.error('❌ RPC error:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        searchError = `RPC error: ${error.message}${error.hint ? ` (${error.hint})` : ''}`;
         // フォールバック: tea_articlesテーブルから直接取得を試行
         try {
           const { data: allArticles, error: tableError } = await supabase
@@ -58,7 +63,10 @@ export async function POST(request: NextRequest) {
         }
       } else {
         matches = data || [];
-        console.log(`RAG search successful: Found ${matches.length} articles`);
+        console.log(`✅ RAG search successful: Found ${matches.length} articles via match_tea_articles RPC`);
+        if (matches.length > 0) {
+          console.log('📄 Found articles:', matches.map(m => m.title));
+        }
       }
     } catch (rpcError) {
       console.error('RPC call failed:', rpcError);
@@ -137,13 +145,12 @@ ${matches.length > 0
       })),
     };
     
-    // 開発環境またはエラーがある場合のみデバッグ情報を追加
-    if (process.env.NODE_ENV === 'development' || searchError) {
-      responseData.debug = {
-        searchError: searchError || null,
-        hasArticles: matches.length > 0,
-      };
-    }
+    // デバッグ情報を常に含める（エラーがある場合、または本番環境でも確認できるように）
+    responseData.debug = {
+      searchError: searchError || null,
+      hasArticles: matches.length > 0,
+      rpcUsed: !searchError || searchError.includes('Fallback'), // RPCが使われたかどうか
+    };
     
     return NextResponse.json(responseData);
 

@@ -251,17 +251,27 @@ export default function QuickDiagnosisPage() {
       if (response.ok) {
         const data = await response.json();
         
-        // デバッグ情報をコンソールに出力（デバッグ情報がある場合）
+        // デバッグ情報をコンソールに出力（常に表示）
+        console.log('🔍 クイック診断APIレスポンス:', {
+          matches: data.matches,
+          articlesCount: data.articles?.length || 0,
+          hasRecommendation: !!data.aiRecommendation,
+          debug: data.debug || 'デバッグ情報なし'
+        });
+        
         if (data.debug) {
-          console.log('🔍 RAG検索デバッグ情報:', {
-            matches: data.matches,
+          console.log('📊 RAG検索詳細:', {
             hasArticles: data.debug.hasArticles,
             searchError: data.debug.searchError,
-            articlesCount: data.articles?.length || 0
+            rpcUsed: data.debug.rpcUsed
           });
           
           if (data.debug.searchError) {
             console.warn('⚠️ RAG検索でエラーが発生しました:', data.debug.searchError);
+          } else if (data.matches === 0) {
+            console.warn('⚠️ 関連記事が見つかりませんでした（matches: 0）');
+          } else {
+            console.log('✅ RAG検索成功:', `記事数: ${data.matches}`);
           }
         }
         
@@ -344,10 +354,17 @@ export default function QuickDiagnosisPage() {
           setShowShopOptions(true);
         }, 4000);
       } else {
-        throw new Error('診断に失敗しました');
+        // APIエラーの詳細をログに出力
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ APIエラー:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData: errorData
+        });
+        throw new Error(`診断に失敗しました: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ 診断エラー:', error);
       addMessage('申し訳ございません。診断中にエラーが発生しました。', 'bot');
     } finally {
       setIsLoading(false);
