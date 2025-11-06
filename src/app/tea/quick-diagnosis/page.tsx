@@ -75,7 +75,6 @@ export default function QuickDiagnosisPage() {
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [relatedArticles, setRelatedArticles] = useState<Array<{id: string; title: string; excerpt: string}>>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const aiRecommendationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // 初期メッセージ
