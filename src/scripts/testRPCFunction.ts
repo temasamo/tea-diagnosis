@@ -67,7 +67,7 @@ async function testRPCFunction() {
       
       if (rpcResults && rpcResults.length > 0) {
         console.log('\n   📄 見つかった記事:');
-        rpcResults.forEach((result: any, index: number) => {
+        rpcResults.forEach((result: { title: string; similarity?: number }, index: number) => {
           console.log(`   ${index + 1}. ${result.title} (similarity: ${result.similarity?.toFixed(4) || 'N/A'})`);
         });
       } else {
@@ -78,7 +78,7 @@ async function testRPCFunction() {
     
     // 3. 実際のクエリでテスト（OpenAI Embeddingを使用）
     console.log('\n3️⃣ 実際のクエリでのテスト');
-    const OpenAI = require('openai');
+    const { default: OpenAI } = await import('openai');
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     
     const testQuery = '疲れている リラックスしたい';
@@ -106,7 +106,7 @@ async function testRPCFunction() {
       
       if (queryResults && queryResults.length > 0) {
         console.log('\n   📄 見つかった記事:');
-        queryResults.forEach((result: any, index: number) => {
+        queryResults.forEach((result: { title: string; similarity?: number }, index: number) => {
           console.log(`   ${index + 1}. ${result.title} (similarity: ${result.similarity?.toFixed(4) || 'N/A'})`);
         });
       } else {

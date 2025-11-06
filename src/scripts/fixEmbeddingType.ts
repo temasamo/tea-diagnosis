@@ -25,7 +25,7 @@ async function checkAndFixEmbeddingType() {
   
   try {
     // 現在のカラム型を確認（SQLクエリを使用）
-    const { data: columnInfo, error: columnError } = await supabase
+    const { data: _columnInfo, error: _columnError } = await supabase
       .rpc('check_column_type', {
         table_name: 'tea_articles',
         column_name: 'embedding'
