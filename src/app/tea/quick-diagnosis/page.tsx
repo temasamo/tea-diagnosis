@@ -76,6 +76,7 @@ export default function QuickDiagnosisPage() {
   const [showRecommendationConfirmation, setShowRecommendationConfirmation] = useState(false);
   const [showProductConfirmation, setShowProductConfirmation] = useState(false);
   const [pendingRecommendation, setPendingRecommendation] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -119,17 +120,24 @@ export default function QuickDiagnosisPage() {
     scrollToBottom();
   }, [messages]);
 
-  // currentQuestionIndexが変更された時に質問を表示
+  // currentQuestionIndexが変更された時に質問を表示（タイピングアニメーション付き）
   useEffect(() => {
     if (currentQuestionIndex >= 0 && currentQuestionIndex < questions.length) {
       const question = questions[currentQuestionIndex];
-      const questionMessage: ChatMessage = {
-        id: `${Date.now()}-question-${currentQuestionIndex}`,
-        type: 'bot',
-        content: question.text,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, questionMessage]);
+      // タイピング中を表示
+      setIsTyping(true);
+      
+      // 「・・・」を表示してから質問を表示（1.5秒後に質問を表示）
+      setTimeout(() => {
+        setIsTyping(false);
+        const questionMessage: ChatMessage = {
+          id: `${Date.now()}-question-${currentQuestionIndex}`,
+          type: 'bot',
+          content: question.text,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, questionMessage]);
+      }, 1500); // 1.5秒後に質問を表示（より見やすく）
     }
   }, [currentQuestionIndex]);
 
@@ -633,7 +641,18 @@ export default function QuickDiagnosisPage() {
             ))}
             {isLoading && (
               <div className="text-center text-gray-500">
-                診断中...
+                <span className="animate-pulse">診断中・・・数秒お待ちください</span>
+              </div>
+            )}
+            {isTyping && (
+              <div className="text-left mb-4">
+                <div className="inline-block max-w-xs p-3 rounded-lg bg-green-100 text-gray-800">
+                  <span className="text-lg font-medium flex items-center gap-1">
+                    <span className="typing-dot">・</span>
+                    <span className="typing-dot">・</span>
+                    <span className="typing-dot">・</span>
+                  </span>
+                </div>
               </div>
             )}
             <div ref={chatEndRef} />
@@ -664,17 +683,6 @@ export default function QuickDiagnosisPage() {
             </div>
           )}
 
-          {isComplete && (
-            <div className="text-center">
-              <button
-                onClick={resetDiagnosis}
-                className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-              >
-                もう一度診断する
-              </button>
-            </div>
-          )}
-
           {/* AI推奨の確認UI */}
           {showRecommendationConfirmation && (
             <div className="mt-4 p-4 bg-blue-50 rounded-lg">
@@ -692,6 +700,17 @@ export default function QuickDiagnosisPage() {
                   いいえ
                 </button>
               </div>
+              {/* 「もう一度診断する」ボタンを「はい、いいえ」の下に配置 */}
+              {isComplete && (
+                <div className="text-center mt-4">
+                  <button
+                    onClick={resetDiagnosis}
+                    className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                  >
+                    もう一度診断する
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -712,6 +731,29 @@ export default function QuickDiagnosisPage() {
                   いいえ
                 </button>
               </div>
+              {/* 「もう一度診断する」ボタンを「はい、いいえ」の下に配置 */}
+              {isComplete && (
+                <div className="text-center mt-4">
+                  <button
+                    onClick={resetDiagnosis}
+                    className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                  >
+                    もう一度診断する
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 「もう一度診断する」ボタン（確認UIが表示されていない場合のみ） */}
+          {isComplete && !showRecommendationConfirmation && !showProductConfirmation && (
+            <div className="text-center mt-4">
+              <button
+                onClick={resetDiagnosis}
+                className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                もう一度診断する
+              </button>
             </div>
           )}
 
