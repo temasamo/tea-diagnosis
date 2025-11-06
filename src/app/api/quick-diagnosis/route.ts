@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     try {
       const { data, error } = await supabase.rpc("match_tea_articles", {
         query_embedding: embedding.data[0].embedding,
-        match_threshold: 0.75,
+        match_threshold: 0.6,
         match_count: 3,
       });
       

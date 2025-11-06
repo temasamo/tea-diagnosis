@@ -72,6 +72,9 @@ export default function QuickDiagnosisPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showShopOptions, setShowShopOptions] = useState(false);
   const [selectedShop, setSelectedShop] = useState<string | null>(null);
+  const [showRecommendationConfirmation, setShowRecommendationConfirmation] = useState(false);
+  const [showProductConfirmation, setShowProductConfirmation] = useState(false);
+  const [pendingRecommendation, setPendingRecommendation] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -284,9 +287,6 @@ export default function QuickDiagnosisPage() {
           }
         }
         
-        // RAG連携の結果を表示
-        addMessage('診断が完了しました！AIがあなたにぴったりのお茶をご提案します。', 'bot');
-        
         // AI推奨から商品名を抽出してrecommendationを設定
         const aiText = data.aiRecommendation.toLowerCase();
         let teaName = "おすすめのお茶";
@@ -326,58 +326,16 @@ export default function QuickDiagnosisPage() {
           reason: data.aiRecommendation
         };
         setRecommendation(recommendation);
+        setPendingRecommendation(data.aiRecommendation);
         
-        // AIからのおすすめを自然文で表示
+        // 診断完了メッセージと確認
         setTimeout(() => {
-          const aiRecommendationMessageId = addMessage(`🤖 AIからのおすすめ: ${data.aiRecommendation}`, 'bot');
-          // AIからのおすすめメッセージの位置にスクロール（自動スクロールの後に実行）
-          setTimeout(() => {
-            const messageElement = document.querySelector(`[data-message-id="${aiRecommendationMessageId}"]`);
-            if (messageElement) {
-              // チャット欄内でスクロール
-              const chatContainer = messageElement.closest('.overflow-y-auto');
-              if (chatContainer) {
-                const elementTop = (messageElement as HTMLElement).offsetTop;
-                const elementHeight = (messageElement as HTMLElement).offsetHeight;
-                const containerHeight = chatContainer.clientHeight;
-                const scrollPosition = elementTop - containerHeight / 2 + elementHeight / 2;
-                chatContainer.scrollTo({
-                  top: scrollPosition,
-                  behavior: 'smooth'
-                });
-              } else {
-                messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }
-          }, 300);
+          addMessage('診断が完了しました。AIがあなたにぴったりのお茶をご提案してよろしいですか？', 'bot');
+          setShowRecommendationConfirmation(true);
         }, 1000);
-        
-        // 関連記事がある場合は表示
-        if (data.articles && data.articles.length > 0) {
-          setTimeout(() => {
-            addMessage('📚 関連記事もご覧ください：', 'bot');
-            data.articles.forEach((article: { title: string }) => {
-              addMessage(`・${article.title}`, 'bot');
-            });
-          }, 2000);
-        }
         
         // 診断完了フラグを設定
         setIsComplete(true);
-        
-        // 具体的な商品提案を表示
-        setTimeout(() => {
-          addMessage('🛒 おすすめ商品：', 'bot');
-          addMessage(`・お茶: ${teaName}`, 'bot');
-          addMessage(`・甘味料: ${sweetenerName}`, 'bot');
-          addMessage(`・お茶菓子: ${snackName}`, 'bot');
-        }, 2000);
-        
-        // ショップ確認メッセージを追加
-        setTimeout(() => {
-          addMessage('これらの商品を購入したい場合は、ご希望のネットショップへお繋げすることができます。いかがしますか？', 'bot');
-          setShowShopOptions(true);
-        }, 4000);
       } else {
         // APIエラーの詳細をログに出力
         const errorData = await response.json().catch(() => ({}));
@@ -396,6 +354,76 @@ export default function QuickDiagnosisPage() {
     }
   };
 
+  // AI推奨の確認ハンドラー
+  const handleRecommendationConfirmation = (confirmed: boolean) => {
+    if (confirmed) {
+      addMessage('はい', 'user');
+      setShowRecommendationConfirmation(false);
+      
+      if (pendingRecommendation) {
+        setTimeout(() => {
+          const aiRecommendationMessageId = addMessage(`🤖 AIからのおすすめ: ${pendingRecommendation}`, 'bot');
+          // AIからのおすすめメッセージの位置にスクロール
+          setTimeout(() => {
+            const messageElement = document.querySelector(`[data-message-id="${aiRecommendationMessageId}"]`);
+            if (messageElement) {
+              const chatContainer = messageElement.closest('.overflow-y-auto');
+              if (chatContainer) {
+                const elementTop = (messageElement as HTMLElement).offsetTop;
+                const elementHeight = (messageElement as HTMLElement).offsetHeight;
+                const containerHeight = chatContainer.clientHeight;
+                const scrollPosition = elementTop - containerHeight / 2 + elementHeight / 2;
+                chatContainer.scrollTo({
+                  top: scrollPosition,
+                  behavior: 'smooth'
+                });
+              } else {
+                messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }
+          }, 300);
+        }, 500);
+        
+        // AI推奨コメント後に商品紹介の確認を表示
+        setTimeout(() => {
+          addMessage('おすすめ商品をまとめてご紹介させていただいてよろしいですか？', 'bot');
+          setShowProductConfirmation(true);
+        }, 2000);
+      }
+    } else {
+      addMessage('いいえ', 'user');
+      addMessage('ありがとうございます。またお気軽にご相談ください。', 'bot');
+      setShowRecommendationConfirmation(false);
+    }
+  };
+
+  // おすすめ商品の確認ハンドラー
+  const handleProductConfirmation = (confirmed: boolean) => {
+    if (confirmed) {
+      addMessage('はい', 'user');
+      setShowProductConfirmation(false);
+      
+      if (recommendation) {
+        setTimeout(() => {
+          addMessage('🛒 おすすめ商品：', 'bot');
+          addMessage(`・お茶: ${recommendation.tea}`, 'bot');
+          addMessage(`・甘味料: ${recommendation.sweetener}`, 'bot');
+          addMessage(`・お茶菓子: ${recommendation.snack}`, 'bot');
+        }, 500);
+        
+        // ショップ確認メッセージを追加
+        setTimeout(() => {
+          addMessage('これらの商品を購入したい場合は、ご希望のネットショップへお繋げすることができます。いかがしますか？', 'bot');
+          setShowShopOptions(true);
+        }, 2000);
+      }
+    } else {
+      addMessage('いいえ', 'user');
+      addMessage('ありがとうございます。またお気軽にご相談ください。', 'bot');
+      setShowProductConfirmation(false);
+    }
+  };
+
   const resetDiagnosis = () => {
     setMessages([]);
     setCurrentQuestionIndex(0);
@@ -405,6 +433,9 @@ export default function QuickDiagnosisPage() {
     setIsLoading(false);
     setShowShopOptions(false);
     setSelectedShop(null);
+    setShowRecommendationConfirmation(false);
+    setShowProductConfirmation(false);
+    setPendingRecommendation(null);
     
     // 初期メッセージを再表示
     setTimeout(() => {
@@ -620,6 +651,46 @@ export default function QuickDiagnosisPage() {
               >
                 もう一度診断する
               </button>
+            </div>
+          )}
+
+          {/* AI推奨の確認UI */}
+          {showRecommendationConfirmation && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <div className="space-y-2">
+                <button
+                  onClick={() => handleRecommendationConfirmation(true)}
+                  className="w-full p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-gray-800 font-medium"
+                >
+                  はい
+                </button>
+                <button
+                  onClick={() => handleRecommendationConfirmation(false)}
+                  className="w-full p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-gray-800 font-medium"
+                >
+                  いいえ
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* おすすめ商品の確認UI */}
+          {showProductConfirmation && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <div className="space-y-2">
+                <button
+                  onClick={() => handleProductConfirmation(true)}
+                  className="w-full p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-gray-800 font-medium"
+                >
+                  はい
+                </button>
+                <button
+                  onClick={() => handleProductConfirmation(false)}
+                  className="w-full p-3 text-left bg-white border border-blue-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors text-gray-800 font-medium"
+                >
+                  いいえ
+                </button>
+              </div>
             </div>
           )}
 
