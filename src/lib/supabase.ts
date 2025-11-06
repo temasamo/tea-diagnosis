@@ -5,11 +5,17 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+// 管理画面用のサービスロールキーを使用するクライアント（RLSをバイパス）
+export const supabaseAdmin = createClient(
+  supabaseUrl,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
+)
+
 // データベースの型定義
 export interface Database {
   public: {
     Tables: {
-      articles: {
+      tea_articles: {
         Row: {
           id: string
           title: string
@@ -41,7 +47,7 @@ export interface Database {
           updated_at?: string
         }
       }
-      knowledge_entries: {
+      tea_knowledge_entries: {
         Row: {
           id: string
           condition: string

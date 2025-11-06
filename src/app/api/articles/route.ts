@@ -5,6 +5,7 @@ export async function GET(_request: NextRequest) {
   try {
     // 記事一覧を取得
     const articles = await supabaseKnowledgeBase.getAllArticles();
+    console.log(`📚 記事取得: ${articles.length}件の記事を取得しました`);
     
     return NextResponse.json({
       articles,

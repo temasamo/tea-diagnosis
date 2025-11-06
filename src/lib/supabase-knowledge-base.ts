@@ -1,11 +1,11 @@
-import { supabase } from './supabase';
+import { supabase, supabaseAdmin } from './supabase';
 import { ArticleData, KnowledgeEntry } from './knowledge-base';
 
 export class SupabaseKnowledgeBaseManager {
   // 記事を保存
   async saveArticle(article: ArticleData): Promise<string> {
     const { data, error } = await supabase
-      .from('articles')
+      .from('tea_articles')
       .insert({
         title: article.title,
         content: article.content,
@@ -29,7 +29,7 @@ export class SupabaseKnowledgeBaseManager {
     if (entries.length === 0) return;
 
     const { error } = await supabase
-      .from('knowledge_entries')
+      .from('tea_knowledge_entries')
       .insert(entries.map(entry => ({
         condition: entry.condition,
         tea: entry.tea,
@@ -48,8 +48,9 @@ export class SupabaseKnowledgeBaseManager {
 
   // 全ての知識エントリを取得
   async getAllKnowledge(): Promise<KnowledgeEntry[]> {
-    const { data, error } = await supabase
-      .from('knowledge_entries')
+    // 管理画面用なので、サービスロールキーを使用（RLSをバイパス）
+    const { data, error } = await supabaseAdmin
+      .from('tea_knowledge_entries')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -75,7 +76,7 @@ export class SupabaseKnowledgeBaseManager {
     const keywords = Object.values(answers).join(' ');
     
     const { data, error } = await supabase
-      .from('knowledge_entries')
+      .from('tea_knowledge_entries')
       .select('*')
       .or(`condition.ilike.%${keywords}%,tea.ilike.%${keywords}%,blend.ilike.%${keywords}%,sweetener.ilike.%${keywords}%,snack.ilike.%${keywords}%`)
       .limit(5);
@@ -88,7 +89,7 @@ export class SupabaseKnowledgeBaseManager {
     if (data.length === 0) {
       // 関連する知識がない場合は、最新の3件を取得
       const { data: fallbackData } = await supabase
-        .from('knowledge_entries')
+        .from('tea_knowledge_entries')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(3);
@@ -139,13 +140,14 @@ export class SupabaseKnowledgeBaseManager {
     knowledgeEntriesCount: number;
     lastUpdate: string | null;
   }> {
+    // 管理画面用なので、サービスロールキーを使用（RLSをバイパス）
     const [articlesResult, knowledgeResult] = await Promise.all([
-      supabase.from('articles').select('id', { count: 'exact' }),
-      supabase.from('knowledge_entries').select('id', { count: 'exact' })
+      supabaseAdmin.from('tea_articles').select('id', { count: 'exact' }),
+      supabaseAdmin.from('tea_knowledge_entries').select('id', { count: 'exact' })
     ]);
 
-    const lastUpdateResult = await supabase
-      .from('knowledge_entries')
+    const lastUpdateResult = await supabaseAdmin
+      .from('tea_knowledge_entries')
       .select('created_at')
       .order('created_at', { ascending: false })
       .limit(1)
@@ -159,24 +161,72 @@ export class SupabaseKnowledgeBaseManager {
   }
 
   // 全ての記事を取得
-  async getAllArticles(): Promise<ArticleData[]> {
-    const { data, error } = await supabase
-      .from('articles')
+  async getAllArticles(): Promise<any[]> {
+    console.log('📚 getAllArticles: 開始');
+    console.log('📚 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + '...');
+    
+    // 管理画面用なので、サービスロールキーを使用（RLSをバイパス）
+    const { data, error } = await supabaseAdmin
+      .from('tea_articles')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching articles:', error);
+      console.error('❌ Error fetching articles:', error);
+      console.error('❌ Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
       throw error;
     }
 
-    return data || [];
+    // データベースのカラム名（スネークケース）をそのまま返す
+    // フロントエンドのArticleインターフェースがpublish_dateを期待しているため
+    if (!data) {
+      console.log('📚 getAllArticles: データがありません (data is null)');
+      return [];
+    }
+    
+    console.log(`📚 getAllArticles: ${data.length}件の記事を取得しました`);
+    if (data.length > 0) {
+      console.log('📚 最初の記事:', {
+        id: data[0].id,
+        title: data[0].title?.substring(0, 50)
+      });
+    }
+    
+    return data.map((row: any) => {
+      // tagsが配列でない場合は、配列に変換
+      let tags = row.tags || [];
+      if (!Array.isArray(tags)) {
+        // 文字列の場合はカンマで分割
+        if (typeof tags === 'string') {
+          tags = tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag);
+        } else {
+          tags = [];
+        }
+      }
+      
+      return {
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        category: row.category || 'health',
+        tags: tags,
+        publish_date: row.publish_date || '',
+        created_at: row.created_at,
+        updated_at: row.updated_at
+      };
+    });
   }
 
   // IDで記事を取得
-  async getArticleById(id: string): Promise<ArticleData | null> {
-    const { data, error } = await supabase
-      .from('articles')
+  async getArticleById(id: string): Promise<any | null> {
+    // 管理画面用なので、サービスロールキーを使用（RLSをバイパス）
+    const { data, error } = await supabaseAdmin
+      .from('tea_articles')
       .select('*')
       .eq('id', id)
       .single();
@@ -186,13 +236,37 @@ export class SupabaseKnowledgeBaseManager {
       return null;
     }
 
-    return data;
+    if (!data) return null;
+
+    // フロントエンドのArticleインターフェースがpublish_dateを期待しているため
+    // tagsが配列でない場合は、配列に変換
+    let tags = data.tags || [];
+    if (!Array.isArray(tags)) {
+      // 文字列の場合はカンマで分割
+      if (typeof tags === 'string') {
+        tags = tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag);
+      } else {
+        tags = [];
+      }
+    }
+    
+    return {
+      id: data.id,
+      title: data.title,
+      content: data.content,
+      category: data.category || 'health',
+      tags: tags,
+      publish_date: data.publish_date || '',
+      created_at: data.created_at,
+      updated_at: data.updated_at
+    };
   }
 
   // ソース（記事タイトル）で知識を取得
   async getKnowledgeBySource(source: string): Promise<KnowledgeEntry[]> {
-    const { data, error } = await supabase
-      .from('knowledge_entries')
+    // 管理画面用なので、サービスロールキーを使用（RLSをバイパス）
+    const { data, error } = await supabaseAdmin
+      .from('tea_knowledge_entries')
       .select('*')
       .eq('source', source)
       .order('created_at', { ascending: false });

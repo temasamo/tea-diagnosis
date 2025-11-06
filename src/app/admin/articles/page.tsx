@@ -151,7 +151,7 @@ export default function ArticlesPage() {
                         <span>公開日: {formatDate(article.publish_date)}</span>
                       )}
                     </div>
-                    {article.tags && article.tags.length > 0 && (
+                    {article.tags && Array.isArray(article.tags) && article.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-3">
                         {article.tags.map((tag, index) => (
                           <span key={index} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm">
@@ -215,7 +215,7 @@ export default function ArticlesPage() {
                     <span className="ml-2 text-gray-600">{knowledgeEntries.length}件</span>
                   </div>
                 </div>
-                {selectedArticle.tags && selectedArticle.tags.length > 0 && (
+                {selectedArticle.tags && Array.isArray(selectedArticle.tags) && selectedArticle.tags.length > 0 && (
                   <div className="mt-4">
                     <span className="font-semibold text-gray-700">タグ:</span>
                     <div className="flex flex-wrap gap-2 mt-2">
