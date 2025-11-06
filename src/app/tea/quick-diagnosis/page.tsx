@@ -675,33 +675,6 @@ export default function QuickDiagnosisPage() {
             </div>
           )}
 
-          {/* AIコメントと関連記事の表示 */}
-          {aiResult && (
-            <div className="mt-6 p-4 bg-green-100 border border-green-300 rounded-lg">
-              <h3 className="font-bold text-green-800 mb-2">🍵 AIおすすめコメント</h3>
-              <p className="text-gray-800 leading-relaxed whitespace-pre-line">{aiResult}</p>
-
-              {relatedArticles.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-semibold text-green-700 mb-2">📚 関連コラム</h4>
-                  <ul className="space-y-2">
-                    {relatedArticles.map((article) => (
-                      <li key={article.id} className="bg-white p-3 rounded-lg shadow-sm border border-green-200">
-                        <p className="font-medium text-green-900">{article.title}</p>
-                        <p className="text-sm text-gray-600">{article.excerpt}</p>
-                        <a
-                          href={`/articles/${article.id}`}
-                          className="text-green-700 text-sm underline mt-1 inline-block"
-                        >
-                          記事を読む →
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>
