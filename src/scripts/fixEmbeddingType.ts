@@ -24,32 +24,15 @@ async function checkAndFixEmbeddingType() {
   console.log('🔍 embeddingカラムの型を確認中...\n');
   
   try {
-    // 現在のカラム型を確認（SQLクエリを使用）
-    const { data: _columnInfo, error: _columnError } = await supabase
-      .rpc('check_column_type', {
-        table_name: 'tea_articles',
-        column_name: 'embedding'
-      }).catch(async () => {
-        // RPC関数が存在しない場合は、直接データを取得して型を推測
-        const { data: sample, error } = await supabase
-          .from('tea_articles')
-          .select('embedding')
-          .limit(1)
-          .single();
-        
-        if (error) throw error;
-        return { data: sample, error: null };
-      });
-    
-    // サンプルデータを取得して型を確認
+    // 現在のカラム型を確認（直接データを取得して型を推測）
     const { data: sample, error: sampleError } = await supabase
       .from('tea_articles')
       .select('id, embedding')
       .limit(1)
       .single();
     
-    if (sampleError) {
-      console.error('❌ データ取得エラー:', sampleError.message);
+    if (sampleError || !sample) {
+      console.error('❌ データ取得エラー:', sampleError?.message || 'データが見つかりません');
       return;
     }
     
