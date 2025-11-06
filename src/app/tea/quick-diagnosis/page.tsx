@@ -72,8 +72,6 @@ export default function QuickDiagnosisPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showShopOptions, setShowShopOptions] = useState(false);
   const [selectedShop, setSelectedShop] = useState<string | null>(null);
-  const [aiResult, setAiResult] = useState<string | null>(null);
-  const [relatedArticles, setRelatedArticles] = useState<Array<{id: string; title: string; excerpt: string}>>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -288,10 +286,6 @@ export default function QuickDiagnosisPage() {
         
         // RAG連携の結果を表示
         addMessage('診断が完了しました！AIがあなたにぴったりのお茶をご提案します。', 'bot');
-        
-        // AI推奨と関連記事を設定
-        setAiResult(data.aiRecommendation);
-        setRelatedArticles(data.articles || []);
         
         // AI推奨から商品名を抽出してrecommendationを設定
         const aiText = data.aiRecommendation.toLowerCase();
