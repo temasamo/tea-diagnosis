@@ -161,7 +161,16 @@ export class SupabaseKnowledgeBaseManager {
   }
 
   // 全ての記事を取得
-  async getAllArticles(): Promise<any[]> {
+  async getAllArticles(): Promise<Array<{
+    id: string;
+    title: string;
+    content: string;
+    category: string;
+    tags: string[];
+    publish_date: string;
+    created_at: string;
+    updated_at: string;
+  }>> {
     console.log('📚 getAllArticles: 開始');
     console.log('📚 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + '...');
     
@@ -197,7 +206,16 @@ export class SupabaseKnowledgeBaseManager {
       });
     }
     
-    return data.map((row: any) => {
+    return data.map((row: {
+      id: string;
+      title: string;
+      content: string;
+      category: string | null;
+      tags: string[] | string | null;
+      publish_date: string | null;
+      created_at: string;
+      updated_at: string;
+    }) => {
       // tagsが配列でない場合は、配列に変換
       let tags = row.tags || [];
       if (!Array.isArray(tags)) {
@@ -223,7 +241,16 @@ export class SupabaseKnowledgeBaseManager {
   }
 
   // IDで記事を取得
-  async getArticleById(id: string): Promise<any | null> {
+  async getArticleById(id: string): Promise<{
+    id: string;
+    title: string;
+    content: string;
+    category: string;
+    tags: string[];
+    publish_date: string;
+    created_at: string;
+    updated_at: string;
+  } | null> {
     // 管理画面用なので、サービスロールキーを使用（RLSをバイパス）
     const { data, error } = await supabaseAdmin
       .from('tea_articles')
