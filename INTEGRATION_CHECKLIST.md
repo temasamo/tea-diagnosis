@@ -130,3 +130,4 @@ npx tsx src/scripts/checkSupabaseIntegration.ts
 4. ⚠️ embeddingを再生成
 5. ⚠️ 実際の動作確認
 
+

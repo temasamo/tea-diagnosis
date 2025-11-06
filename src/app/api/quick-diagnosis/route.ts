@@ -6,9 +6,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// RAG検索のためにサービスロールキーを使用（RLSをバイパス）
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export async function POST(request: NextRequest) {
@@ -69,8 +70,8 @@ ${JSON.stringify(answers, null, 2)}
     try {
       const { data, error } = await supabase.rpc("match_tea_articles", {
         query_embedding: embedding.data[0].embedding,
-        match_threshold: 0.6,
-        match_count: 3,
+        match_threshold: 0.4, // 0.6から0.4に下げて、より多くの記事を検索できるように
+        match_count: 5, // 3から5に増やして、より多くの候補を取得
       });
       
       if (error) {
