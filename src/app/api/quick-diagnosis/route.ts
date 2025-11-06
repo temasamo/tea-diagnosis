@@ -17,11 +17,44 @@ export async function POST(request: NextRequest) {
     const { answers } = await request.json();
     console.log('📝 ユーザー回答受信:', { answersCount: Object.keys(answers).length });
 
-    // ユーザーの回答を文字列に変換
-    const userCondition = Object.values(answers).join(' ');
-    console.log('📄 ユーザー条件:', userCondition);
+    // ユーザーの回答を文字列に変換（ログ用）
+    const rawAnswers = Object.values(answers).join(' ');
+    console.log('📄 ユーザー回答（連結）:', rawAnswers);
 
-    // 1️⃣ ユーザー入力をベクトル化
+    // 1️⃣ 選択結果から自然文の診断文を生成
+    console.log('📝 診断文生成開始...');
+    const diagnosisPrompt = `
+以下のユーザーの質問と回答から、自然な日本語で診断文を生成してください。
+
+質問と回答:
+${JSON.stringify(answers, null, 2)}
+
+診断文の例:
+- 「あなたは疲労気味で、目の疲れも感じており、リラックスしたい気分です」
+- 「疲れている状態で、胃の調子を気にされており、集中力を高めたいと考えています」
+
+診断文は、ユーザーの状態や希望を自然な文章で表現してください。簡潔で具体的な表現にしてください。
+`;
+
+    const diagnosisResponse = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "あなたは茶ソムリエです。ユーザーの質問と回答から、自然な日本語で診断文を生成してください。"
+        },
+        {
+          role: "user",
+          content: diagnosisPrompt
+        }
+      ],
+      temperature: 0.3,
+    });
+
+    const userCondition = diagnosisResponse.choices[0]?.message?.content?.trim() || rawAnswers;
+    console.log('✅ 診断文生成完了:', userCondition);
+
+    // 2️⃣ 診断文をベクトル化
     console.log('🔢 Embedding生成開始...');
     const embedding = await openai.embeddings.create({
       model: "text-embedding-3-small",
@@ -29,7 +62,7 @@ export async function POST(request: NextRequest) {
     });
     console.log('✅ Embedding生成完了:', { dimension: embedding.data[0].embedding.length });
 
-    // 2️⃣ 類似記事を検索（RPC）
+    // 3️⃣ 類似記事を検索（RPC）
     let matches: Array<{ id: string; title: string; content: string }> = [];
     let searchError: string | null = null;
     
@@ -93,10 +126,10 @@ export async function POST(request: NextRequest) {
     }
     
     const prompt = `
-あなたは茶ソムリエです。以下のユーザーの回答と参考記事を基に、最適なお茶を自然な文章で提案してください。
+あなたは茶ソムリエです。以下のユーザーの診断文と参考記事を基に、最適なお茶を自然な文章で提案してください。
 
-ユーザーの回答:
-${JSON.stringify(answers, null, 2)}
+ユーザーの診断文:
+${userCondition}
 
 参考記事:
 ${matches.length > 0 

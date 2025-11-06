@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 interface ChatMessage {
   id: string;
@@ -268,8 +269,14 @@ export default function QuickDiagnosisPage() {
           matches: data.matches,
           articlesCount: data.articles?.length || 0,
           hasRecommendation: !!data.aiRecommendation,
+          condition: data.condition, // 診断文を表示
           debug: data.debug || 'デバッグ情報なし'
         });
+        
+        // 診断文をコンソールに表示
+        if (data.condition) {
+          console.log('📝 生成された診断文:', data.condition);
+        }
         
         if (data.debug) {
           console.log('📊 RAG検索詳細:', {
@@ -572,9 +579,23 @@ export default function QuickDiagnosisPage() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-4">
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-6 mb-4">
-          <h1 className="text-2xl font-bold text-center text-green-800 mb-2">
-            🍵 クイック診断チャット
-          </h1>
+          <div className="relative flex items-center justify-center mb-1 py-8">
+            {/* 背景画像 */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Image
+                src="/teaAI.png"
+                alt="茶ソムリエ"
+                width={200}
+                height={200}
+                className="object-contain"
+                priority
+              />
+            </div>
+            {/* 見出しテキスト（前面に表示） */}
+            <h1 className="relative text-2xl font-bold text-green-800 z-10">
+              🍵 クイック診断チャット
+            </h1>
+          </div>
           <p className="text-center text-gray-600 mb-6">
             あなたにぴったりのお茶を見つけましょう
           </p>
