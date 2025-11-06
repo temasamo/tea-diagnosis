@@ -152,7 +152,7 @@ async function main() {
           // カラムが存在しない場合は、オプショナルフィールドを除外して再試行
           if (updateError.code === "PGRST116" || updateError.message.includes("column")) {
             console.log(`⚠️ Some optional columns may not exist, trying without them...`);
-            const { file_path, hash, source, synced_at, app_name, ...basicData } = articleData;
+            const { file_path: _file_path, hash: _hash, source: _source, synced_at: _synced_at, app_name: _app_name, ...basicData } = articleData;
             const { error: retryError } = await supabase
               .from("tea_articles")
               .update(basicData)
@@ -180,7 +180,7 @@ async function main() {
         articleData.synced_at = new Date().toISOString();
         articleData.app_name = "tea";
 
-        const { data: insertedData, error: insertError } = await supabase
+        const { data: _insertedData, error: insertError } = await supabase
           .from("tea_articles")
           .insert(articleData)
           .select()
@@ -190,7 +190,7 @@ async function main() {
           // カラムが存在しない場合は、オプショナルフィールドを除外して再試行
           if (insertError.code === "PGRST116" || insertError.message.includes("column")) {
             console.log(`⚠️ Some optional columns may not exist, trying without them...`);
-            const { file_path, hash, source, synced_at, app_name, ...basicData } = articleData;
+            const { file_path: _file_path2, hash: _hash2, source: _source2, synced_at: _synced_at2, app_name: _app_name2, ...basicData } = articleData;
             const { error: retryError } = await supabase
               .from("tea_articles")
               .insert(basicData)
