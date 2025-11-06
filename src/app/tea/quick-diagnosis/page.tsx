@@ -75,6 +75,7 @@ export default function QuickDiagnosisPage() {
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [relatedArticles, setRelatedArticles] = useState<Array<{id: string; title: string; excerpt: string}>>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const aiRecommendationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // 初期メッセージ
@@ -94,15 +95,17 @@ export default function QuickDiagnosisPage() {
     }, 1500);
   }, []);
 
-  const addMessage = (content: string, type: 'bot' | 'user', url?: string) => {
+  const addMessage = (content: string, type: 'bot' | 'user', url?: string): string => {
+    const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newMessage: ChatMessage = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: messageId,
       type,
       content,
       timestamp: new Date(),
       url
     };
     setMessages(prev => [...prev, newMessage]);
+    return messageId;
   };
 
   // チャットの自動スクロール
@@ -331,9 +334,29 @@ export default function QuickDiagnosisPage() {
         };
         setRecommendation(recommendation);
         
-        // AI推奨を自然文で表示
+        // AIからのおすすめを自然文で表示
         setTimeout(() => {
-          addMessage(`🤖 AI推奨: ${data.aiRecommendation}`, 'bot');
+          const aiRecommendationMessageId = addMessage(`🤖 AIからのおすすめ: ${data.aiRecommendation}`, 'bot');
+          // AIからのおすすめメッセージの位置にスクロール（自動スクロールの後に実行）
+          setTimeout(() => {
+            const messageElement = document.querySelector(`[data-message-id="${aiRecommendationMessageId}"]`);
+            if (messageElement) {
+              // チャット欄内でスクロール
+              const chatContainer = messageElement.closest('.overflow-y-auto');
+              if (chatContainer) {
+                const elementTop = (messageElement as HTMLElement).offsetTop;
+                const elementHeight = (messageElement as HTMLElement).offsetHeight;
+                const containerHeight = chatContainer.clientHeight;
+                const scrollPosition = elementTop - containerHeight / 2 + elementHeight / 2;
+                chatContainer.scrollTo({
+                  top: scrollPosition,
+                  behavior: 'smooth'
+                });
+              } else {
+                messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }
+          }, 300);
         }, 1000);
         
         // 関連記事がある場合は表示
@@ -536,6 +559,7 @@ export default function QuickDiagnosisPage() {
             {messages.map((message) => (
               <div
                 key={message.id}
+                data-message-id={message.id}
                 className={`mb-4 ${
                   message.type === 'user' ? 'text-right' : 'text-left'
                 }`}
