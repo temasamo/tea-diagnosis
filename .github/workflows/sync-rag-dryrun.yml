@@ -1,0 +1,79 @@
+name: 🔍 Sync RAG Dry Run (HealTea + MarketSupporterAI)
+
+on:
+  workflow_dispatch: # ✅ 手動実行のみ（確実にUI表示される）
+    inputs:
+      log_detail:
+        description: "ログ詳細（trueで詳細ログ）"
+        required: false
+        default: "false"
+
+jobs:
+  dryrun:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Checkout tea-diagnosis (main repo)
+        uses: actions/checkout@v4
+
+      - name: 📥 Clone HealTea Project
+        uses: actions/checkout@v4
+        with:
+          repository: temasamo/healtea-blog
+          path: HealTea-Project
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: 📥 Clone Affiliate Project
+        uses: actions/checkout@v4
+        with:
+          repository: temasamo/affiliate-blog
+          path: Affiliate-Project
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: 🧰 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🧠 Dry Run Sync (No Supabase writes)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "🟢 Dry Run 開始: HealTea + Affiliate 記事を解析中..."
+          
+          echo ""
+          echo "HealTea フォルダ構成:"
+          tree HealTea-Project/src/content/blog/health/tea/blendedtea | head -n 20
+          echo ""
+
+          echo "Affiliate フォルダ構成:"
+          tree Affiliate-Project/articles/japanesetea | head -n 20
+          echo ""
+
+          echo "📊 予定同期件数を概算中..."
+          healtea_count=$(find HealTea-Project/src/content/blog/health/tea/blendedtea -name '*.md' | wc -l)
+          affiliate_count=$(find Affiliate-Project/articles/japanesetea -name '*.md' | wc -l)
+
+          echo "📘 HealTea 記事数: $healtea_count"
+          echo "📗 MarketSupporterAI 記事数: $affiliate_count"
+
+          total=$((healtea_count + affiliate_count))
+          echo "✅ 合計予定同期件数: $total"
+
+          if [ "${{ github.event.inputs.log_detail }}" = "true" ]; then
+            echo ""
+            echo "🧾 HealTea 記事リスト（先頭10件）:"
+            find HealTea-Project/src/content/blog/health/tea/blendedtea -name '*.md' | head -n 10
+            echo ""
+            echo "🧾 Affiliate 記事リスト（先頭10件）:"
+            find Affiliate-Project/articles/japanesetea -name '*.md' | head -n 10
+          fi
+
+          echo ""
+          echo "🧩 確認結果: OpenAIキー利用可能 → ✅ $(if [ -n \"$OPENAI_API_KEY\" ]; then echo 'OK'; else echo 'NG'; fi)"
+          echo "🧩 Supabaseキー利用可否（DryRunでは未使用） → ✅ (省略)"
+          echo ""
+          echo "🌙 Dry Run 完了！ Supabaseへの書き込みは行っていません。"
