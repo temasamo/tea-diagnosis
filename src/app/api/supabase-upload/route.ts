@@ -63,7 +63,18 @@ export async function GET() {
     const allKnowledge = await supabaseKnowledgeBase.getAllKnowledge();
     
     // Embedding生成ログを取得（最新10件）
-    let embeddingLogs: any[] = [];
+    interface EmbeddingLog {
+      id: string;
+      execution_type: string;
+      started_at: string;
+      completed_at: string | null;
+      success_count: number;
+      error_count: number;
+      total_processed: number;
+      failed_article_ids: string[] | null;
+      error_summary: string | null;
+    }
+    let embeddingLogs: EmbeddingLog[] = [];
     try {
       const { data: logs, error: logsError } = await supabaseAdmin
         .from('embedding_generation_logs')

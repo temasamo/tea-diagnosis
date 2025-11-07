@@ -285,7 +285,7 @@ main().catch(async (err) => {
         })
         .eq("id", latestLog.id);
     }
-  } catch (logErr) {
+  } catch (_logErr) {
     // ログ更新も失敗した場合は無視
   }
   
