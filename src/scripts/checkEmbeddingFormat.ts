@@ -90,3 +90,4 @@ WHERE embedding IS NOT NULL;
 checkEmbeddingFormat();
 
 
+

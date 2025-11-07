@@ -6,7 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:healtea": "tsx src/scripts/syncHealteaArticles.ts",
+    "sync:affiliate": "tsx src/scripts/syncAffiliateArticles.ts",
+    "generate:embeddings": "tsx src/scripts/generateEmbeddings.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.74.0",

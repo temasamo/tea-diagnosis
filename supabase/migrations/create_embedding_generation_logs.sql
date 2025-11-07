@@ -21,3 +21,4 @@ COMMENT ON TABLE embedding_generation_logs IS 'Embedding生成ジョブの実行
 COMMENT ON COLUMN embedding_generation_logs.execution_type IS '実行タイプ: scheduled (自動実行) または manual (手動実行)';
 COMMENT ON COLUMN embedding_generation_logs.failed_article_ids IS '失敗した記事のID配列';
 
+

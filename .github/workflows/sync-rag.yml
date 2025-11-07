@@ -59,14 +59,14 @@ jobs:
         working-directory: tea-diagnosis
         env:
           HEALTEA_ARTICLES_DIR: ${{ github.workspace }}/HealTea-Project/healtea-blog/src/content/blog/health/tea/blendedtea
-        run: npx tsx src/scripts/syncHealteaArticles.ts
+        run: pnpm run sync:healtea
         continue-on-error: true  # HealTea同期失敗でも続行
 
       - name: 🚀 Sync MarketSupporterAI Articles
         working-directory: tea-diagnosis
         env:
           AFFILIATE_ARTICLES_DIR: ${{ github.workspace }}/Affiliate-Project/affiliate-blog/articles/japanesetea
-        run: npx tsx src/scripts/syncAffiliateArticles.ts
+        run: pnpm run sync:affiliate
         continue-on-error: true  # Affiliate同期失敗でも続行
 
       - name: 🧠 Generate updated embeddings
@@ -75,7 +75,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: npx tsx src/scripts/generateEmbeddings.ts
+        run: pnpm run generate:embeddings
         continue-on-error: true  # Embedding生成失敗でも続行
 
       - name: 📊 Summary
