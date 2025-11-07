@@ -1,4 +1,4 @@
-name: Sync RAG Articles (HealTea + MarketSupporterAI)
+name: 🔄 Sync RAG Articles (HealTea + MarketSupporterAI)
 
 on:
   schedule:
@@ -19,16 +19,16 @@ jobs:
       - name: 📦 Checkout HealTea repository
         uses: actions/checkout@v4
         with:
-          repository: temasamo/healtea-blog  # 実際のリポジトリ名に変更してください
+          repository: temasamo/healtea-blog
           path: HealTea-Project
-          token: ${{ secrets.GITHUB_TOKEN }}  # プライベートリポジトリの場合はPATが必要
+          token: ${{ secrets.PAT_TOKEN }}  # ← PATに変更（必須）
 
       - name: 📦 Checkout Affiliate repository
         uses: actions/checkout@v4
         with:
-          repository: temasamo/affiliate-blog  # 実際のリポジトリ名に変更してください
+          repository: temasamo/affiliate-blog
           path: Affiliate-Project
-          token: ${{ secrets.GITHUB_TOKEN }}  # プライベートリポジトリの場合はPATが必要
+          token: ${{ secrets.PAT_TOKEN }}  # ← 同じくPATで認証
 
       - name: 🧰 Setup Node.js
         uses: actions/setup-node@v4
@@ -60,14 +60,14 @@ jobs:
         env:
           HEALTEA_ARTICLES_DIR: ${{ github.workspace }}/HealTea-Project/healtea-blog/src/content/blog/health/tea/blendedtea
         run: npx tsx src/scripts/syncHealteaArticles.ts
-        continue-on-error: true  # 一方が失敗しても続行
+        continue-on-error: true  # HealTea同期失敗でも続行
 
       - name: 🚀 Sync MarketSupporterAI Articles
         working-directory: tea-diagnosis
         env:
           AFFILIATE_ARTICLES_DIR: ${{ github.workspace }}/Affiliate-Project/affiliate-blog/articles/japanesetea
         run: npx tsx src/scripts/syncAffiliateArticles.ts
-        continue-on-error: true  # 一方が失敗しても続行
+        continue-on-error: true  # Affiliate同期失敗でも続行
 
       - name: 📊 Summary
         if: always()
@@ -75,4 +75,3 @@ jobs:
           echo "## RAG同期結果" >> $GITHUB_STEP_SUMMARY
           echo "- HealTea記事同期: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "- MarketSupporterAI記事同期: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-
