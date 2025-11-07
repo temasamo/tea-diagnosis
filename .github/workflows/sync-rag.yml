@@ -69,9 +69,28 @@ jobs:
         run: npx tsx src/scripts/syncAffiliateArticles.ts
         continue-on-error: true  # Affiliate同期失敗でも続行
 
+      - name: 🧠 Generate updated embeddings
+        working-directory: tea-diagnosis
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: npx tsx src/scripts/generateEmbeddings.ts
+        continue-on-error: true  # Embedding生成失敗でも続行
+
       - name: 📊 Summary
         if: always()
         run: |
           echo "## RAG同期結果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 記事同期" >> $GITHUB_STEP_SUMMARY
           echo "- HealTea記事同期: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "- MarketSupporterAI記事同期: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Embedding再生成" >> $GITHUB_STEP_SUMMARY
+          echo "- 詳細は各ステップのログを確認してください" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📋 ログの確認方法:" >> $GITHUB_STEP_SUMMARY
+          echo "1. このワークフローの実行ページを開く" >> $GITHUB_STEP_SUMMARY
+          echo "2. 「🧠 Generate updated embeddings」ステップをクリック" >> $GITHUB_STEP_SUMMARY
+          echo "3. 成功/失敗した記事の詳細が表示されます" >> $GITHUB_STEP_SUMMARY

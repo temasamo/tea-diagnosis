@@ -20,10 +20,23 @@ interface Stats {
   lastUpdate: string;
 }
 
+interface EmbeddingLog {
+  id: string;
+  execution_type: string;
+  started_at: string;
+  completed_at: string | null;
+  success_count: number;
+  error_count: number;
+  total_processed: number;
+  failed_article_ids: string[] | null;
+  error_summary: string | null;
+}
+
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'knowledge' | 'history' | 'stats'>('knowledge');
   const [knowledgeEntries, setKnowledgeEntries] = useState<KnowledgeEntry[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [embeddingLogs, setEmbeddingLogs] = useState<EmbeddingLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,6 +54,14 @@ export default function AdminPage() {
         knowledgeEntriesCount: data.knowledgeEntriesCount,
         lastUpdate: data.lastUpdate
       });
+      setEmbeddingLogs(data.embeddingLogs || []);
+      
+      // デバッグ用: ログデータを確認
+      if (data.embeddingLogs) {
+        console.log('📊 Embedding生成ログ:', data.embeddingLogs.length, '件');
+      } else {
+        console.log('⚠️ Embedding生成ログがAPIから返されていません');
+      }
     } catch (error) {
       console.error('データの取得に失敗しました:', error);
     } finally {
@@ -200,6 +221,74 @@ export default function AdminPage() {
               記事の学習履歴とAI抽出結果を確認できます
             </p>
             
+            {/* Embedding生成ログ */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Embedding生成履歴</h3>
+              {embeddingLogs.length > 0 ? (
+                <div className="space-y-4">
+                  {embeddingLogs.map((log) => (
+                    <div key={log.id} className="border-b border-gray-200 pb-4 last:border-b-0 last:pb-0">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-gray-900">
+                              Embedding再生成
+                            </p>
+                            <span className={`px-2 py-1 text-xs rounded ${
+                              log.execution_type === 'scheduled' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {log.execution_type === 'scheduled' ? '自動実行' : '手動実行'}
+                            </span>
+                            {log.completed_at ? (
+                              <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800">
+                                完了
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800">
+                                実行中
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <p>
+                              <span className="font-medium">処理件数:</span> {log.total_processed}件
+                              {log.success_count > 0 && (
+                                <span className="ml-2 text-green-600">✅ 成功: {log.success_count}件</span>
+                              )}
+                              {log.error_count > 0 && (
+                                <span className="ml-2 text-red-600">❌ 失敗: {log.error_count}件</span>
+                              )}
+                            </p>
+                            {log.error_summary && (
+                              <p className="text-red-600 text-xs">
+                                ⚠️ {log.error_summary}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right text-sm text-gray-500">
+                          <p>開始: {formatDate(log.started_at)}</p>
+                          {log.completed_at && (
+                            <p>完了: {formatDate(log.completed_at)}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="mb-2">まだEmbedding生成の実行履歴がありません。</p>
+                  <p className="text-sm">
+                    <code className="bg-gray-100 px-2 py-1 rounded">generateEmbeddings.ts</code> を実行すると、ここに履歴が表示されます。
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 従来の学習活動履歴 */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">最近の学習活動</h3>
               <div className="space-y-4">

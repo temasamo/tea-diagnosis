@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseKnowledgeBase } from '@/lib/supabase-knowledge-base';
+import { supabaseAdmin } from '@/lib/supabase';
 // import { ArticleData } from '@/lib/knowledge-base';
 
 export async function POST(request: NextRequest) {
@@ -61,10 +62,34 @@ export async function GET() {
     const stats = await supabaseKnowledgeBase.getStats();
     const allKnowledge = await supabaseKnowledgeBase.getAllKnowledge();
     
+    // Embedding生成ログを取得（最新10件）
+    let embeddingLogs: any[] = [];
+    try {
+      const { data: logs, error: logsError } = await supabaseAdmin
+        .from('embedding_generation_logs')
+        .select('*')
+        .order('started_at', { ascending: false })
+        .limit(10);
+      
+      if (logsError) {
+        console.error('Embedding生成ログの取得エラー:', logsError);
+        // テーブルが存在しない場合のエラー（42P01）を特別に処理
+        if (logsError.code === '42P01' || logsError.message?.includes('does not exist')) {
+          console.warn('⚠️ embedding_generation_logs テーブルが存在しません。SQLファイルを実行してください。');
+        }
+      } else if (logs) {
+        embeddingLogs = logs;
+        console.log(`✅ Embedding生成ログを取得しました: ${logs.length}件`);
+      }
+    } catch (logsErr) {
+      console.error('Embedding生成ログの取得で例外が発生しました:', logsErr);
+    }
+    
     return NextResponse.json({
       ...stats,
       sampleEntries: allKnowledge.slice(0, 5),
-      allEntries: allKnowledge
+      allEntries: allKnowledge,
+      embeddingLogs: embeddingLogs // Embedding生成ログを追加
     });
     
   } catch (error: unknown) {
