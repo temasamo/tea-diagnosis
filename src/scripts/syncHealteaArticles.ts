@@ -29,7 +29,9 @@ const supabase = createClient(
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 // HealTeaのブレンドティーフォルダ
+// 環境変数から取得、なければデフォルトパスを使用
 const ARTICLES_DIR =
+  process.env.HEALTEA_ARTICLES_DIR ||
   "/Users/teruhikookuyama/workspace/HealTea-Project/healtea-blog/src/content/blog/health/tea/blendedtea";
 
 // ====== メイン処理 ======

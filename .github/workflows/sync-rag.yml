@@ -1,0 +1,77 @@
+name: Sync RAG Articles (HealTea + MarketSupporterAI)
+
+on:
+  schedule:
+    # 毎日 午前3時（日本時間）に自動実行（UTC換算で18:00）
+    - cron: "0 18 * * *"
+  workflow_dispatch:  # 手動実行も可能
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Checkout tea-diagnosis repository
+        uses: actions/checkout@v4
+        with:
+          path: tea-diagnosis
+
+      - name: 📦 Checkout HealTea repository
+        uses: actions/checkout@v4
+        with:
+          repository: temasamo/healtea-blog  # 実際のリポジトリ名に変更してください
+          path: HealTea-Project
+          token: ${{ secrets.GITHUB_TOKEN }}  # プライベートリポジトリの場合はPATが必要
+
+      - name: 📦 Checkout Affiliate repository
+        uses: actions/checkout@v4
+        with:
+          repository: temasamo/affiliate-blog  # 実際のリポジトリ名に変更してください
+          path: Affiliate-Project
+          token: ${{ secrets.GITHUB_TOKEN }}  # プライベートリポジトリの場合はPATが必要
+
+      - name: 🧰 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📦 Install dependencies
+        working-directory: tea-diagnosis
+        run: npm ci
+
+      - name: 📦 Install tsx (if not in package.json)
+        working-directory: tea-diagnosis
+        run: npm install --save-dev tsx || true
+
+      - name: 🔑 Load environment variables
+        working-directory: tea-diagnosis
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}" >> .env.local
+          echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}" >> .env.local
+          echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> .env.local
+
+      - name: 🚀 Sync HealTea Articles
+        working-directory: tea-diagnosis
+        env:
+          HEALTEA_ARTICLES_DIR: ${{ github.workspace }}/HealTea-Project/healtea-blog/src/content/blog/health/tea/blendedtea
+        run: npx tsx src/scripts/syncHealteaArticles.ts
+        continue-on-error: true  # 一方が失敗しても続行
+
+      - name: 🚀 Sync MarketSupporterAI Articles
+        working-directory: tea-diagnosis
+        env:
+          AFFILIATE_ARTICLES_DIR: ${{ github.workspace }}/Affiliate-Project/affiliate-blog/articles/japanesetea
+        run: npx tsx src/scripts/syncAffiliateArticles.ts
+        continue-on-error: true  # 一方が失敗しても続行
+
+      - name: 📊 Summary
+        if: always()
+        run: |
+          echo "## RAG同期結果" >> $GITHUB_STEP_SUMMARY
+          echo "- HealTea記事同期: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- MarketSupporterAI記事同期: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+
