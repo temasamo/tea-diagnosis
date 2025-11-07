@@ -35,13 +35,14 @@ jobs:
         with:
           node-version: 20
 
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: 📦 Install dependencies
         working-directory: tea-diagnosis
-        run: npm ci
-
-      - name: 📦 Install tsx (if not in package.json)
-        working-directory: tea-diagnosis
-        run: npm install --save-dev tsx || true
+        run: pnpm install --frozen-lockfile
 
       - name: 🔑 Load environment variables
         working-directory: tea-diagnosis
