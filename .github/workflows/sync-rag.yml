@@ -58,14 +58,14 @@ jobs:
       - name: 🚀 Sync HealTea Articles
         working-directory: tea-diagnosis
         env:
-          HEALTEA_ARTICLES_DIR: ${{ github.workspace }}/../HealTea-Project/healtea-blog/src/content/blog/health/tea/blendedtea
+          HEALTEA_ARTICLES_DIR: ${{ github.workspace }}/../../HealTea-Project/healtea-blog/src/content/blog/health/tea/blendedtea
         run: pnpm run sync:healtea
         continue-on-error: true  # HealTea同期失敗でも続行
 
       - name: 🚀 Sync MarketSupporterAI Articles
         working-directory: tea-diagnosis
         env:
-          AFFILIATE_ARTICLES_DIR: ${{ github.workspace }}/../Affiliate-Project/affiliate-blog/articles/japanesetea
+          AFFILIATE_ARTICLES_DIR: ${{ github.workspace }}/../../Affiliate-Project/affiliate-blog/articles/japanesetea
         run: pnpm run sync:affiliate
         continue-on-error: true  # Affiliate同期失敗でも続行
 
