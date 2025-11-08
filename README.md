@@ -13,7 +13,7 @@ AI-powered tea diagnosis application built with Next.js and OpenAI.
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 20+ 
 - pnpm (recommended) or npm
 - OpenAI API key
 
