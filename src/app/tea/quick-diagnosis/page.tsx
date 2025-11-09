@@ -23,6 +23,9 @@ interface Recommendation {
   sweetener: string;
   snack: string;
   reason: string;
+  teaAvailable?: boolean;
+  sweetenerAvailable?: boolean;
+  snackAvailable?: boolean;
 }
 
 const questions: Question[] = [
@@ -159,13 +162,21 @@ export default function QuickDiagnosisPage() {
         // 少し遅延してから次の質問
         setTimeout(() => {
           const nextIndex = currentQuestionIndex + 1;
-          setCurrentQuestionIndex(nextIndex);
+          // 質問6問目（最後の質問）の前に「それでは最後に」を表示
+          if (nextIndex === questions.length - 1) {
+            addMessage('わかりました！それでは最後に', 'bot');
+            setTimeout(() => {
+              setCurrentQuestionIndex(nextIndex);
+            }, 1000);
+          } else {
+            setCurrentQuestionIndex(nextIndex);
+          }
           // 質問の表示は setCurrentQuestionIndex の更新後に自動的に行われるため、
           // ここでは質問を手動で追加しない
         }, 1000);
       }, 1500);
     } else {
-      // 診断完了
+      // 診断完了（質問6問目）
       setTimeout(() => {
         const finalAizuchi = getFinalAizuchi(answer);
         addMessage(finalAizuchi, 'bot');
@@ -225,8 +236,7 @@ export default function QuickDiagnosisPage() {
       'それでは、',
       'では、',
       '次に、',
-      '続いて、',
-      'もう一つ、'
+      '続いて、'
     ];
     
     const randomTransition = transitions[Math.floor(Math.random() * transitions.length)];
@@ -302,43 +312,136 @@ export default function QuickDiagnosisPage() {
           }
         }
         
-        // AI推奨から商品名を抽出してrecommendationを設定
-        const aiText = data.aiRecommendation.toLowerCase();
-        let teaName = "おすすめのお茶";
-        let sweetenerName = "はちみつ";
-        let snackName = "和菓子";
+        // AI推奨から商品名を正確に抽出する関数
+        const extractProducts = (aiText: string) => {
+          // お茶菓子を先に抽出（より具体的な商品名を優先、複合名も抽出）
+          const snackPatterns = [
+            /抹茶どら焼き/gi,
+            /和三盆のどら焼き/gi,
+            /どら焼き/gi,
+            /和菓子/gi,
+            /洋菓子/gi,
+            /クッキー/gi,
+            /マカロン/gi,
+            /ケーキ/gi,
+            /大福/gi,
+            /ようかん/gi,
+            /最中/gi,
+          ];
+          
+          // お茶の種類を抽出（より具体的な商品名を優先、お茶菓子で使われたものは除外）
+          const teaPatterns = [
+            /日本茶とハーブのブレンドティー/gi,
+            /日本茶.*ハーブ.*ブレンド/gi,
+            /ハーブ.*ブレンドティー/gi,
+            /ブレンドティー/gi,
+            /カモミールティー/gi,
+            /カモミール/gi,
+            /ペパーミントティー/gi,
+            /ペパーミント/gi,
+            /ローズヒップティー/gi,
+            /ローズヒップ/gi,
+            /ジャスミンティー/gi,
+            /ジャスミン/gi,
+            /ゴーヤ茶/gi,
+            /ほうじ茶/gi,
+            /抹茶/gi,
+            /緑茶/gi,
+            /紅茶/gi,
+            /ハーブティー/gi,
+            /ハーブ/gi,
+            /プーアル茶/gi,
+            /ウーロン茶/gi,
+            /白茶/gi,
+            /黄茶/gi,
+            /日本茶/gi,
+          ];
+          
+          // 甘味料を抽出
+          const sweetenerPatterns = [
+            /和三盆糖/gi,
+            /和三盆/gi,
+            /はちみつ/gi,
+            /ハチミツ/gi,
+            /黒糖/gi,
+            /砂糖/gi,
+            /メープルシロップ/gi,
+            /ステビア/gi,
+          ];
+          
+          let teaName: string | null = null;
+          let sweetenerName: string | null = null;
+          let snackName: string | null = null;
+          
+          // お茶菓子を先に抽出（複合名を優先）
+          for (const pattern of snackPatterns) {
+            const match = aiText.match(pattern);
+            if (match) {
+              snackName = match[0];
+              break;
+            }
+          }
+          
+          // お茶を抽出（お茶菓子で使われたものは除外）
+          // 「抹茶どら焼き」の場合は「抹茶」を抽出しないようにする
+          const usedInSnack = snackName && snackName.includes('抹茶') ? '抹茶' : null;
+          
+          // すべてのマッチを収集し、最も具体的な（長い）ものを選択
+          const allMatches: string[] = [];
+          for (const pattern of teaPatterns) {
+            const match = aiText.match(pattern);
+            if (match) {
+              const matchedText = match[0];
+              // お茶菓子で使われたものは除外
+              if (usedInSnack && matchedText === usedInSnack) {
+                continue;
+              }
+              allMatches.push(matchedText);
+            }
+          }
+          
+          // 最も具体的な（長い）マッチを選択
+          if (allMatches.length > 0) {
+            // ブレンドティーを含むものを優先
+            const blendMatches = allMatches.filter(m => m.includes('ブレンド'));
+            if (blendMatches.length > 0) {
+              // ブレンドティーの中で最も長いものを選択
+              teaName = blendMatches.reduce((a, b) => a.length > b.length ? a : b);
+            } else {
+              // ブレンドティーがない場合は、最も長いものを選択
+              teaName = allMatches.reduce((a, b) => a.length > b.length ? a : b);
+            }
+          }
+          
+          // 甘味料を抽出
+          for (const pattern of sweetenerPatterns) {
+            const match = aiText.match(pattern);
+            if (match) {
+              sweetenerName = match[0];
+              break;
+            }
+          }
+          
+          return {
+            tea: teaName,
+            sweetener: sweetenerName,
+            snack: snackName,
+          };
+        };
         
-        // お茶の種類を抽出（より具体的な商品名を優先）
-        if (aiText.includes('カモミール')) teaName = "カモミールティー";
-        else if (aiText.includes('ペパーミント')) teaName = "ペパーミントティー";
-        else if (aiText.includes('ローズヒップ')) teaName = "ローズヒップティー";
-        else if (aiText.includes('ジャスミン')) teaName = "ジャスミンティー";
-        else if (aiText.includes('ゴーヤ茶')) teaName = "ゴーヤ茶";
-        else if (aiText.includes('ほうじ茶')) teaName = "ほうじ茶";
-        else if (aiText.includes('抹茶')) teaName = "抹茶";
-        else if (aiText.includes('緑茶')) teaName = "緑茶";
-        else if (aiText.includes('紅茶')) teaName = "紅茶";
-        else if (aiText.includes('ハーブ')) teaName = "ハーブティー";
+        // AI提案から商品名を抽出
+        const extracted = extractProducts(data.aiRecommendation);
         
-        // 甘味料を抽出（より具体的な商品名を優先）
-        if (aiText.includes('はちみつ')) sweetenerName = "はちみつ";
-        else if (aiText.includes('ハチミツ')) sweetenerName = "はちみつ";
-        else if (aiText.includes('和三盆')) sweetenerName = "和三盆糖";
-        else if (aiText.includes('黒糖')) sweetenerName = "黒糖";
-        else if (aiText.includes('砂糖')) sweetenerName = "砂糖";
-        
-        // お茶菓子を抽出（より具体的な商品名を優先）
-        if (aiText.includes('どら焼き')) snackName = "どら焼き";
-        else if (aiText.includes('和三盆のどら焼き')) snackName = "和三盆のどら焼き";
-        else if (aiText.includes('和菓子')) snackName = "和菓子";
-        else if (aiText.includes('洋菓子')) snackName = "洋菓子";
-        else if (aiText.includes('クッキー')) snackName = "クッキー";
-        
-        const recommendation = {
-          tea: teaName,
-          sweetener: sweetenerName,
-          snack: snackName,
-          reason: data.aiRecommendation
+        // 商品が存在するかどうかをチェック（現時点では全て存在すると仮定）
+        // 将来的には商品データベースと照合する処理を追加可能
+        const recommendation: Recommendation = {
+          tea: extracted.tea || "おすすめのお茶",
+          sweetener: extracted.sweetener || "はちみつ",
+          snack: extracted.snack || "和菓子",
+          reason: data.aiRecommendation,
+          teaAvailable: extracted.tea !== null,
+          sweetenerAvailable: extracted.sweetener !== null,
+          snackAvailable: extracted.snack !== null,
         };
         setRecommendation(recommendation);
         setPendingRecommendation(data.aiRecommendation);
@@ -421,9 +524,24 @@ export default function QuickDiagnosisPage() {
       if (recommendation) {
         setTimeout(() => {
           addMessage('🛒 おすすめ商品：', 'bot');
-          addMessage(`・お茶: ${recommendation.tea}`, 'bot');
-          addMessage(`・甘味料: ${recommendation.sweetener}`, 'bot');
-          addMessage(`・お茶菓子: ${recommendation.snack}`, 'bot');
+          
+          // お茶の表示（存在しない場合は「該当商品なし」）
+          const teaDisplay = recommendation.teaAvailable !== false 
+            ? recommendation.tea 
+            : '該当商品なし';
+          addMessage(`・お茶: ${teaDisplay}`, 'bot');
+          
+          // 甘味料の表示
+          const sweetenerDisplay = recommendation.sweetenerAvailable !== false 
+            ? recommendation.sweetener 
+            : '該当商品なし';
+          addMessage(`・甘味料: ${sweetenerDisplay}`, 'bot');
+          
+          // お茶菓子の表示
+          const snackDisplay = recommendation.snackAvailable !== false 
+            ? recommendation.snack 
+            : '該当商品なし';
+          addMessage(`・お茶菓子: ${snackDisplay}`, 'bot');
         }, 500);
         
         // ショップ確認メッセージを追加
@@ -515,67 +633,100 @@ export default function QuickDiagnosisPage() {
     };
 
     let links: { name: string; url: string }[] = [];
+    
+    // 「該当商品なし」またはデフォルト値（AI提案から抽出されていない場合）の場合はリンクを生成しない
+    const shouldSkipProduct = (productName: string, isExtracted: boolean) => {
+      if (productName === '該当商品なし') {
+        return true;
+      }
+      // デフォルト値で、かつAI提案から抽出されていない場合はスキップ
+      if (!isExtracted && (productName === 'おすすめのお茶' || productName === 'はちみつ' || productName === '和菓子')) {
+        return true;
+      }
+      return false;
+    };
+
+    // recommendationからavailableフラグを取得
+    const teaExtracted = recommendation?.teaAvailable ?? false;
+    const sweetenerExtracted = recommendation?.sweetenerAvailable ?? false;
+    const snackExtracted = recommendation?.snackAvailable ?? false;
 
     switch (shop) {
       case 'Amazon':
-        links = [
-          {
+        if (!shouldSkipProduct(searchKeywords.tea, teaExtracted)) {
+          links.push({
             name: `${searchKeywords.tea}をAmazonで探す`,
             url: `https://www.amazon.co.jp/s?k=${encodeURIComponent(searchKeywords.tea)}&tag=temasamo1220d-22`
-          },
-          {
+          });
+        }
+        if (!shouldSkipProduct(searchKeywords.sweetener, sweetenerExtracted)) {
+          links.push({
             name: `${searchKeywords.sweetener}をAmazonで探す`,
             url: `https://www.amazon.co.jp/s?k=${encodeURIComponent(searchKeywords.sweetener)}&tag=temasamo1220d-22`
-          },
-          {
+          });
+        }
+        if (!shouldSkipProduct(searchKeywords.snack, snackExtracted)) {
+          links.push({
             name: `${searchKeywords.snack}をAmazonで探す`,
             url: `https://www.amazon.co.jp/s?k=${encodeURIComponent(searchKeywords.snack)}&tag=temasamo1220d-22`
-          }
-        ];
+          });
+        }
         break;
 
       case '楽天':
         const rakutenBaseUrl = 'https://hb.afl.rakuten.co.jp/hgc/4c5e3919.1c76af65.4c5e391a.0caa9dc5/?pc=';
-        links = [
-          {
+        if (!shouldSkipProduct(searchKeywords.tea, teaExtracted)) {
+          links.push({
             name: `${searchKeywords.tea}を楽天で探す`,
             url: `${rakutenBaseUrl}https%3A%2F%2Fsearch.rakuten.co.jp%2Fsearch%2Fmall%2F${encodeURIComponent(searchKeywords.tea)}%2F`
-          },
-          {
+          });
+        }
+        if (!shouldSkipProduct(searchKeywords.sweetener, sweetenerExtracted)) {
+          links.push({
             name: `${searchKeywords.sweetener}を楽天で探す`,
             url: `${rakutenBaseUrl}https%3A%2F%2Fsearch.rakuten.co.jp%2Fsearch%2Fmall%2F${encodeURIComponent(searchKeywords.sweetener)}%2F`
-          },
-          {
+          });
+        }
+        if (!shouldSkipProduct(searchKeywords.snack, snackExtracted)) {
+          links.push({
             name: `${searchKeywords.snack}を楽天で探す`,
             url: `${rakutenBaseUrl}https%3A%2F%2Fsearch.rakuten.co.jp%2Fsearch%2Fmall%2F${encodeURIComponent(searchKeywords.snack)}%2F`
-          }
-        ];
+          });
+        }
         break;
 
       case 'Yahooショップ':
         const yahooBaseUrl = 'https://ck.jp.ap.valuecommerce.com/servlet/referral?sid=3751180&pid=892078463&vc_url=';
-        links = [
-          {
+        if (!shouldSkipProduct(searchKeywords.tea, teaExtracted)) {
+          links.push({
             name: `${searchKeywords.tea}をYahooショップで探す`,
             url: `${yahooBaseUrl}https%3A%2F%2Fshopping.yahoo.co.jp%2Fsearch%2F%3Fp%3D${encodeURIComponent(searchKeywords.tea)}`
-          },
-          {
+          });
+        }
+        if (!shouldSkipProduct(searchKeywords.sweetener, sweetenerExtracted)) {
+          links.push({
             name: `${searchKeywords.sweetener}をYahooショップで探す`,
             url: `${yahooBaseUrl}https%3A%2F%2Fshopping.yahoo.co.jp%2Fsearch%2F%3Fp%3D${encodeURIComponent(searchKeywords.sweetener)}`
-          },
-          {
+          });
+        }
+        if (!shouldSkipProduct(searchKeywords.snack, snackExtracted)) {
+          links.push({
             name: `${searchKeywords.snack}をYahooショップで探す`,
             url: `${yahooBaseUrl}https%3A%2F%2Fshopping.yahoo.co.jp%2Fsearch%2F%3Fp%3D${encodeURIComponent(searchKeywords.snack)}`
-          }
-        ];
+          });
+        }
         break;
     }
 
     // リンクをメッセージとして追加
-    addMessage(`${shop}での検索リンクをご用意しました！`, 'bot');
-    links.forEach(link => {
-      addMessage(`🔗 ${link.name}`, 'bot', link.url);
-    });
+    if (links.length > 0) {
+      addMessage(`${shop}での検索リンクをご用意しました！`, 'bot');
+      links.forEach(link => {
+        addMessage(`🔗 ${link.name}`, 'bot', link.url);
+      });
+    } else {
+      addMessage(`${shop}では該当商品が見つかりませんでした。`, 'bot');
+    }
 
     setShowShopOptions(false);
     setSelectedShop(null);
