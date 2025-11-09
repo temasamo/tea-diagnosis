@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 
 type Role = "assistant" | "user";
 type ChatMsg = { role: Role; text: string };
@@ -280,6 +281,7 @@ export default function DiagnosisPage() {
           gap: 12,
           height: 520,
           overflow: "hidden",
+          position: "relative",
         }}
       >
         {/* スクロールするメッセージ領域（カード内） */}
@@ -289,25 +291,72 @@ export default function DiagnosisPage() {
             flex: 1,
             overflowY: "auto",
             paddingRight: 6,
+            position: "relative",
+            zIndex: 1,
+            backgroundImage: "url(/teaAI.png)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* 半透明オーバーレイ */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundColor: "rgba(255, 255, 255, 0.2)",
+              pointerEvents: "none",
+              zIndex: 0,
+            }}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative", zIndex: 1 }}>
             {messages.map((m, i) => (
               <div
                 key={i}
                 style={{
                   alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-                  background: m.role === "user" ? "#e0f2fe" : "#f0fdf4",
-                  color: m.role === "user" ? "#0c4a6e" : "#166534",
-                  border: `1px solid ${m.role === "user" ? "#7dd3fc" : "#86efac"}`,
-                  padding: "10px 12px",
-                  borderRadius: 12,
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
                   maxWidth: "80%",
-                  whiteSpace: "pre-wrap",
-                  lineHeight: 1.6,
                 }}
               >
-                {m.text}
+                {/* アシスタントメッセージの左側にアバターを表示 */}
+                {m.role === "assistant" && (
+                  <div
+                    style={{
+                      flexShrink: 0,
+                      width: 40,
+                      height: 40,
+                      borderRadius: "50%",
+                      overflow: "hidden",
+                      border: "2px solid #86efac",
+                      background: "#fff",
+                    }}
+                  >
+                    <Image
+                      src="/teaAI.png"
+                      alt="茶ソムリエ"
+                      width={40}
+                      height={40}
+                      style={{ objectFit: "cover", width: "100%", height: "100%" }}
+                    />
+                  </div>
+                )}
+                <div
+                  style={{
+                    background: m.role === "user" ? "#e0f2fe" : "#f0fdf4",
+                    color: m.role === "user" ? "#0c4a6e" : "#166534",
+                    border: `1px solid ${m.role === "user" ? "#7dd3fc" : "#86efac"}`,
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    whiteSpace: "pre-wrap",
+                    lineHeight: 1.6,
+                    flex: 1,
+                  }}
+                >
+                  {m.text}
+                </div>
               </div>
             ))}
 
@@ -315,23 +364,51 @@ export default function DiagnosisPage() {
               <div
                 style={{
                   alignSelf: "flex-start",
-                  background: "#f0fdf4",
-                  color: "#166534",
-                  border: "1px solid #86efac",
-                  padding: "10px 12px",
-                  borderRadius: 12,
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
                   maxWidth: "60%",
-                  fontFamily: "monospace",
                 }}
               >
-                🍵 茶ソムリエ：<TypingDots />
+                {/* タイピング中のアバター */}
+                <div
+                  style={{
+                    flexShrink: 0,
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    overflow: "hidden",
+                    border: "2px solid #86efac",
+                    background: "#fff",
+                  }}
+                >
+                  <Image
+                    src="/teaAI.png"
+                    alt="茶ソムリエ"
+                    width={40}
+                    height={40}
+                    style={{ objectFit: "cover", width: "100%", height: "100%" }}
+                  />
+                </div>
+                <div
+                  style={{
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    border: "1px solid #86efac",
+                    padding: "10px 12px",
+                    borderRadius: 12,
+                    fontFamily: "monospace",
+                  }}
+                >
+                  🍵 茶ソムリエ：<TypingDots />
+                </div>
               </div>
             )}
           </div>
         </div>
 
         {/* 入力フォーム（カード下部に固定） */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8 }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, position: "relative", zIndex: 1 }}>
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}

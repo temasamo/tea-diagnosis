@@ -587,20 +587,8 @@ export default function QuickDiagnosisPage() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-4">
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-6 mb-4">
-          <div className="relative flex items-center justify-center mb-1 py-8">
-            {/* 背景画像 */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Image
-                src="/teaAI.png"
-                alt="茶ソムリエ"
-                width={200}
-                height={200}
-                className="object-contain"
-                priority
-              />
-            </div>
-            {/* 見出しテキスト（前面に表示） */}
-            <h1 className="relative text-2xl font-bold text-green-800 z-10">
+          <div className="flex items-center justify-center mb-1 py-8">
+            <h1 className="text-2xl font-bold text-green-800">
               🍵 クイック診断チャット
             </h1>
           </div>
@@ -608,44 +596,83 @@ export default function QuickDiagnosisPage() {
             あなたにぴったりのお茶を見つけましょう
           </p>
 
-          <div className="h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50 mb-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                data-message-id={message.id}
-                className={`mb-4 ${
-                  message.type === 'user' ? 'text-right' : 'text-left'
-                }`}
-              >
+          <div 
+            className="h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50 mb-4 relative"
+            style={{
+              backgroundImage: 'url(/teaAI.png)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          >
+            {/* 半透明オーバーレイ */}
+            <div 
+              className="absolute inset-0 pointer-events-none z-0"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              }}
+            />
+            <div className="relative z-10">
+              {messages.map((message) => (
                 <div
-                  className={`inline-block max-w-xs p-3 rounded-lg ${
-                    message.type === 'user'
-                      ? 'bg-green-500 text-white'
-                      : 'bg-green-100 text-gray-800'
+                  key={message.id}
+                  data-message-id={message.id}
+                  className={`mb-4 flex items-start gap-2 ${
+                    message.type === 'user' ? 'flex-row-reverse' : 'flex-row'
                   }`}
                 >
-                  {message.url ? (
-                    <a
-                      href={message.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 underline"
-                    >
-                      {message.content}
-                    </a>
-                  ) : (
-                    message.content
+                  {/* ボットメッセージの左側にアバターを表示 */}
+                  {message.type === 'bot' && (
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden border-2 border-green-200 bg-white">
+                      <Image
+                        src="/teaAI.png"
+                        alt="茶ソムリエ"
+                        width={40}
+                        height={40}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
                   )}
+                  <div
+                    className={`inline-block max-w-xs p-3 rounded-lg ${
+                      message.type === 'user'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-green-100 text-gray-800'
+                    }`}
+                  >
+                    {message.url ? (
+                      <a
+                        href={message.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline"
+                      >
+                        {message.content}
+                      </a>
+                    ) : (
+                      message.content
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
             {isLoading && (
               <div className="text-center text-gray-500">
                 <span className="animate-pulse">診断中・・・数秒お待ちください</span>
               </div>
             )}
             {isTyping && (
-              <div className="text-left mb-4">
+              <div className="text-left mb-4 flex items-start gap-2 relative z-10">
+                {/* タイピング中のアバター */}
+                <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden border-2 border-green-200 bg-white">
+                  <Image
+                    src="/teaAI.png"
+                    alt="茶ソムリエ"
+                    width={40}
+                    height={40}
+                    className="object-cover w-full h-full"
+                  />
+                </div>
                 <div className="inline-block max-w-xs p-3 rounded-lg bg-green-100 text-gray-800">
                   <span className="text-lg font-medium flex items-center gap-1">
                     <span className="typing-dot">・</span>
