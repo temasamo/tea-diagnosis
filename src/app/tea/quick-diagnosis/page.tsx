@@ -632,7 +632,7 @@ export default function QuickDiagnosisPage() {
       snack: rec.snack
     };
 
-    let links: { name: string; url: string }[] = [];
+    const links: { name: string; url: string }[] = [];
     
     // 「該当商品なし」またはデフォルト値（AI提案から抽出されていない場合）の場合はリンクを生成しない
     const shouldSkipProduct = (productName: string, isExtracted: boolean) => {
