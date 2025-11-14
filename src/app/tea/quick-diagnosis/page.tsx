@@ -737,18 +737,18 @@ export default function QuickDiagnosisPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-4">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-4">
-          <div className="flex items-center justify-center mb-1 py-8">
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-4 border-2 border-green-300">
+          <div className="flex items-center justify-center mb-1 py-8 bg-green-100 rounded-lg">
             <h1 className="text-2xl font-bold text-green-800">
               🍵 クイック診断チャット
             </h1>
           </div>
-          <p className="text-center text-gray-600 mb-6">
+          <p className="text-center text-gray-600 mb-6 bg-green-100 rounded-lg py-3 px-4">
             あなたにぴったりのお茶を見つけましょう
           </p>
 
           <div 
-            className="h-96 overflow-y-auto border rounded-lg p-4 bg-gray-50 mb-4 relative"
+            className="h-96 overflow-y-auto border-2 border-green-300 rounded-lg p-4 bg-gray-50 mb-4 relative"
             style={{
               backgroundImage: 'url(/teaAI.png)',
               backgroundSize: 'cover',
@@ -787,9 +787,16 @@ export default function QuickDiagnosisPage() {
                   <div
                     className={`inline-block max-w-xs p-3 rounded-lg ${
                       message.type === 'user'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-green-100 text-gray-800'
+                        ? 'text-white'
+                        : 'text-gray-800'
                     }`}
+                    style={{
+                      backgroundColor: message.type === 'user' 
+                        ? 'rgba(34, 197, 94, 0.3)' 
+                        : 'rgba(240, 253, 244, 0.3)',
+                      backdropFilter: 'blur(4px)',
+                      textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                    }}
                   >
                     {message.url ? (
                       <a
@@ -824,7 +831,14 @@ export default function QuickDiagnosisPage() {
                     className="object-cover w-full h-full"
                   />
                 </div>
-                <div className="inline-block max-w-xs p-3 rounded-lg bg-green-100 text-gray-800">
+                <div 
+                  className="inline-block max-w-xs p-3 rounded-lg text-gray-800"
+                  style={{
+                    backgroundColor: 'rgba(240, 253, 244, 0.3)',
+                    backdropFilter: 'blur(4px)',
+                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                  }}
+                >
                   <span className="text-lg font-medium flex items-center gap-1">
                     <span className="typing-dot">・</span>
                     <span className="typing-dot">・</span>
@@ -838,7 +852,7 @@ export default function QuickDiagnosisPage() {
 
           {!isComplete && currentQuestionIndex >= 0 && currentQuestion && (
             <div className="space-y-2">
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-gray-600 mb-3 bg-green-100 rounded-lg py-2 px-4">
                 質問 {currentQuestionIndex + 1} / {questions.length}
               </p>
               <div className="grid gap-2">
