@@ -65,7 +65,7 @@ jobs:
       - name: 🚀 Sync MarketSupporterAI Articles
         working-directory: tea-diagnosis
         env:
-          AFFILIATE_ARTICLES_DIR: ${{ github.workspace }}/Affiliate-Project/affiliate-blog/articles/japanesetea
+          AFFILIATE_ARTICLES_DIR: ${{ github.workspace }}/Affiliate-Project/articles/japanesetea
         run: pnpm run sync:affiliate
         continue-on-error: true  # Affiliate同期失敗でも続行
 
