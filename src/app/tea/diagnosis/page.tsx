@@ -293,7 +293,7 @@ export default function DiagnosisPage() {
             paddingRight: 6,
             position: "relative",
             zIndex: 1,
-            backgroundImage: "url(/chasitu.png)",
+            backgroundImage: "url(/chat-back.png)",
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
