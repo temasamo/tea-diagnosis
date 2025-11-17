@@ -750,7 +750,7 @@ export default function QuickDiagnosisPage() {
           <div 
             className="h-96 overflow-y-auto border-2 border-green-300 rounded-lg p-4 bg-gray-50 mb-4 relative"
             style={{
-              backgroundImage: 'url(/teaAI.png)',
+              backgroundImage: 'url(/chasitu.png)',
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
